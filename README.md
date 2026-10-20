@@ -1,4 +1,4 @@
-# UseBy
+# EatMe
 UW CSE403 Group 4 Project
 
 This project aims to help users keep track of their refrigerator inventory.
