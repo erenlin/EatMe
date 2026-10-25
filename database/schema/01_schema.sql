@@ -8,6 +8,7 @@ $$
         create type gender as enum ('Male', 'Female', 'Others');
     exception
         when duplicate_object then null;
+
     end
 $$;
 
@@ -229,7 +230,7 @@ create table if not exists expiry (
 
 
 create table if not exists barcodes (
-    id                  serial primary key,
+    id                  integer generated always as identity primary key,
     variant_id          integer not null
         references item_variants (id) on delete cascade,
     symbology           barcode not null default 'gtin',
@@ -256,7 +257,7 @@ $$
 $$;
 
 create table if not exists item_instances (
-    id                  serial primary key,
+    id                  integer generated always as identity primary key,
     variant_id          integer not null references item_variants (id) on delete cascade,
     storage_mode        storage not null default 'room',
     quantity            integer not null default 1 check (quantity > 0),
@@ -291,7 +292,7 @@ create table if not exists item_instances (
 --  ================================================================================================================  --
 
 create table if not exists recipe (
-    id                  serial primary key,
+    id                  integer generated always as identity primary key,
     user_id             integer not null references users (id) on delete cascade,
     recipe_name         varchar not null,
     servings            smallint not null check (servings > 0),
@@ -304,7 +305,7 @@ create table if not exists recipe (
 );
 
 create table if not exists recipe_ingredients (
-    id                  serial primary key,
+    id                  integer generated always as identity primary key,
     recipe_id           integer not null references recipe (id) on delete cascade,
     variant_id          integer not null references item_variants (id) on delete restrict,
     quantity            smallint not null check (quantity > 0),
@@ -314,9 +315,5 @@ create table if not exists recipe_ingredients (
     constraint uq_recipe_ingredients_recipe_variant
         unique (recipe_id, variant_id)
 );
-
--- "which recipes use this variant?"
-create index if not exists idx_recipe_ingredients_variant
-    on recipe_ingredients (variant_id);
 
 --  ================================================= END OF FILE ==================================================  --
