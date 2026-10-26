@@ -1,3 +1,5 @@
+create extension if not exists pgcrypto;
+
 --  ================================================================================================================  --
 --    ADMINISTRATION TABLES                                                                                           --
 --  ================================================================================================================  --
@@ -15,32 +17,32 @@ $$;
 
 create table if not exists users
 (
-    id                  integer generated always as identity primary key,
-    first_name          varchar not null,
-    last_name           varchar not null,
+    id            integer generated always as identity primary key,
+    first_name    varchar     not null,
+    last_name     varchar     not null,
 
-    email               varchar not null unique,
-    password_hash       text not null,
+    email         varchar     not null unique,
+    password_hash text        not null,
 
-    phone_number        varchar,
-    date_of_birth       date not null,
-    user_gender         gender not null,
+    phone_number  varchar,
+    date_of_birth date        not null,
+    user_gender   gender      not null,
 
-    created_at          timestamptz not null default now(),
-    updated_at          timestamptz not null default now()
+    created_at    timestamptz not null default now(),
+    updated_at    timestamptz not null default now()
 );
 
 
 create table if not exists users_share
 (
-    id                  integer generated always as identity primary key,
-    grantor_user_id     integer not null
+    id              integer generated always as identity primary key,
+    grantor_user_id integer     not null
         references users (id) on delete cascade,
-    grantee_user_id     integer not null
+    grantee_user_id integer     not null
         references users (id) on delete cascade,
 
-    created_at          timestamptz not null default now(),
-    revoked_at          timestamptz default null,
+    created_at      timestamptz not null default now(),
+    revoked_at      timestamptz          default null,
 
     -- Cannot grant self access
     constraint chk_users_share_not_self
@@ -59,12 +61,12 @@ create unique index if not exists uq_users_share_active
 
 create table if not exists user_settings
 (
-    id                  integer generated always as identity primary key,
-    user_id             integer not null
+    id      integer generated always as identity primary key,
+    user_id integer not null
         references users (id) on delete cascade,
 
-    key                 text not null,
-    value               text not null,
+    key     text    not null,
+    value   text    not null,
 
     -- ensures one setting per user
     constraint uq_user_settings_user_key
@@ -74,44 +76,44 @@ create table if not exists user_settings
 
 create table if not exists items
 (
-    id                  integer generated always as identity primary key,
-    user_id             integer not null
+    id         integer generated always as identity primary key,
+    user_id    integer     not null
         references users (id) on delete cascade,
-    item_name           varchar not null,
+    item_name  varchar     not null,
 
-    created_at          timestamptz not null default now(),
-    updated_at          timestamptz not null default now(),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
     constraint uq_items_user_name unique (user_id, item_name)
 );
 
 create table if not exists users
 (
-    id                  serial primary key,
-    first_name          varchar not null,
-    last_name           varchar not null,
+    id            serial primary key,
+    first_name    varchar     not null,
+    last_name     varchar     not null,
 
-    email               varchar not null unique,
-    password_hash       text not null,
+    email         varchar     not null unique,
+    password_hash text        not null,
 
-    phone_number        varchar,
-    date_of_birth       date not null,
-    user_gender         gender not null,
+    phone_number  varchar,
+    date_of_birth date        not null,
+    user_gender   gender      not null,
 
-    created_at          timestamptz not null default now(),
-    modified_at         timestamptz not null default now()
+    created_at    timestamptz not null default now(),
+    modified_at   timestamptz not null default now()
 );
 
 
 create table if not exists users_share
 (
-    id                  serial primary key,
-    grantor_user_id     integer not null
+    id              serial primary key,
+    grantor_user_id integer     not null
         references users (id) on delete cascade,
-    grantee_user_id     integer not null
+    grantee_user_id integer     not null
         references users (id) on delete cascade,
 
-    created_at          timestamptz not null default now(),
-    revoked_at          timestamptz default null,
+    created_at      timestamptz not null default now(),
+    revoked_at      timestamptz          default null,
 
     -- Cannot grant self access
     constraint chk_users_share_not_self
@@ -125,17 +127,17 @@ create table if not exists users_share
 -- only one active copy of a grant
 create unique index if not exists uq_users_share_active
     on users_share (grantor_user_id, grantee_user_id)
-        where revoked_at is null;
+    where revoked_at is null;
 
 
 create table if not exists user_settings
 (
-    id                  serial primary key,
-    user_id             integer not null
+    id      serial primary key,
+    user_id integer not null
         references users (id) on delete cascade,
 
-    key                 text not null,
-    value               text not null,
+    key     text    not null,
+    value   text    not null,
 
     -- ensures one setting per user
     constraint uq_user_settings_user_key
@@ -177,32 +179,33 @@ $$;
 
 create table if not exists items
 (
-    id                  integer generated always as identity primary key,
-    user_id             integer not null
+    id         integer generated always as identity primary key,
+    user_id    integer     not null
         references users (id) on delete cascade,
-    item_name           varchar not null,
-    created_at          timestamptz not null default now(),
+    item_name  varchar     not null,
+    created_at timestamptz not null default now(),
 
     constraint uq_items_user_name unique (user_id, item_name)
 );
 
 
-create table if not exists item_variants (
-    id                      integer generated always as identity primary key,
+create table if not exists item_variants
+(
+    id                     integer generated always as identity primary key,
 
-    item_id                 integer not null
+    item_id                integer     not null
         references items (id) on delete cascade,
-    variant_name            varchar not null,
+    variant_name           varchar     not null,
 
-    typical_serving         smallint not null check (typical_serving > 0),
-    typical_weight_grams    smallint not null check (typical_weight_grams > 0),
+    typical_serving        smallint    not null check (typical_serving > 0),
+    typical_weight_grams   smallint    not null check (typical_weight_grams > 0),
 
-    average_days_to_expire  smallint not null check (average_days_to_expire > 0),
-    default_storage_mode    storage not null default 'room',
-    counting_method         counting not null,
+    average_days_to_expire smallint    not null check (average_days_to_expire > 0),
+    default_storage_mode   storage     not null default 'room',
+    counting_method        counting    not null,
 
-    icon_png                bytea default null,
-    created_at              timestamptz not null default now(),
+    icon_png               bytea                default null,
+    created_at             timestamptz not null default now(),
 
     -- unique item-variant pair
     constraint uq_item_variants_item_name
@@ -218,30 +221,60 @@ create table if not exists item_variants (
 );
 
 
-create table if not exists expiry (
-    variant_id          integer not null
+create table if not exists expiry
+(
+    variant_id   integer     not null
         references item_variants (id) on delete cascade,
-    storage_mode        storage not null,
-    expiry_days         smallint not null check (expiry_days > 0),
-    created_at          timestamptz not null default current_timestamp,
+    storage_mode storage     not null,
+    expiry_days  smallint    not null check (expiry_days > 0),
+    created_at   timestamptz not null default current_timestamp,
 
     primary key (variant_id, storage_mode)
 );
 
 
-create table if not exists barcodes (
-    id                  integer generated always as identity primary key,
-    variant_id          integer not null
+create table if not exists barcodes
+(
+    id         integer generated always as identity primary key,
+    variant_id integer     not null
         references item_variants (id) on delete cascade,
-    symbology           barcode not null default 'gtin',
-    code                text not null,
-    created_at          timestamptz not null default current_timestamp,
+    symbology  barcode     not null default 'gtin',
+    code       text        not null,
+    created_at timestamptz not null default current_timestamp,
 
     -- a variant can't list the same barcode twice
     constraint uq_barcodes_variant_code
         unique (variant_id, symbology, code)
 );
 
+
+--  ================================================================================================================  --
+--    NUTRITION TABLES                                                                                                --
+--  ================================================================================================================  --
+
+create table if not exists nutrition
+(
+    variant_id      integer primary key references item_variants (id) on delete cascade,
+    calories_kcal   numeric(7, 2) not null check (calories_kcal >= 0),
+
+    carbohydrate_g  numeric(6, 2) not null default 0 check (carbohydrate_g >= 0),
+    sugar_g         numeric(6, 2) check (sugar_g >= 0),
+    fiber_g         numeric(6, 2) check (fiber_g >= 0),
+
+    fat_g           numeric(6, 2) not null default 0 check (fat_g >= 0),
+    saturated_fat_g numeric(6, 2) check (saturated_fat_g >= 0),
+
+    protein_g       numeric(6, 2) not null default 0 check (protein_g >= 0),
+
+    sodium_mg       numeric(8, 2) check (sodium_mg >= 0),
+    created_at      timestamptz   not null default now(),
+
+    -- sub-components can't exceed their parent
+    constraint chk_nutrition_sugar_within_carbs
+        check (sugar_g is null or sugar_g <= carbohydrate_g),
+    constraint chk_nutrition_sat_fat_within_fat
+        check (saturated_fat_g is null or saturated_fat_g <= fat_g)
+);
 
 --  ================================================================================================================  --
 --    EPHEMERAL INVENTORY TABLES                                                                                      --
@@ -256,18 +289,19 @@ $$
     end
 $$;
 
-create table if not exists item_instances (
-    id                  integer generated always as identity primary key,
-    variant_id          integer not null references item_variants (id) on delete cascade,
-    storage_mode        storage not null default 'room',
-    quantity            integer not null default 1 check (quantity > 0),
-    added_at            timestamptz not null default now(),
-    expiry_modifier     smallint not null default 0,
-    servings_consumed   smallint not null default 0 check (servings_consumed >= 0),
-    consumption_reason  consumption default null,
-    icon_png            bytea default null,
-    created_at          timestamptz not null default now(),
-    removed_at          timestamptz default null,
+create table if not exists item_instances
+(
+    id                 integer generated always as identity primary key,
+    variant_id         integer     not null references item_variants (id) on delete cascade,
+    storage_mode       storage     not null default 'room',
+    quantity           integer     not null default 1 check (quantity > 0),
+    added_at           timestamptz not null default now(),
+    expiry_modifier    smallint    not null default 0,
+    servings_consumed  smallint    not null default 0 check (servings_consumed >= 0),
+    consumption_reason consumption          default null,
+    icon_png           bytea                default null,
+    created_at         timestamptz not null default now(),
+    removed_at         timestamptz          default null,
 
     -- icon size must be small
     constraint chk_item_instances_icon_size
@@ -291,25 +325,27 @@ create table if not exists item_instances (
 --    RECIPE TABLES                                                                                                   --
 --  ================================================================================================================  --
 
-create table if not exists recipe (
-    id                  integer generated always as identity primary key,
-    user_id             integer not null references users (id) on delete cascade,
-    recipe_name         varchar not null,
-    servings            smallint not null check (servings > 0),
-    instructions        text,
-    created_at          timestamptz not null default now(),
+create table if not exists recipe
+(
+    id           integer generated always as identity primary key,
+    user_id      integer     not null references users (id) on delete cascade,
+    recipe_name  varchar     not null,
+    servings     smallint    not null check (servings > 0),
+    instructions text,
+    created_at   timestamptz not null default now(),
 
     -- a user can't have two recipes with the same name
     constraint uq_recipe_user_name
-    unique (user_id, recipe_name)
+        unique (user_id, recipe_name)
 );
 
-create table if not exists recipe_ingredients (
-    id                  integer generated always as identity primary key,
-    recipe_id           integer not null references recipe (id) on delete cascade,
-    variant_id          integer not null references item_variants (id) on delete restrict,
-    quantity            smallint not null check (quantity > 0),
-    position            smallint not null default 0,
+create table if not exists recipe_ingredients
+(
+    id         integer generated always as identity primary key,
+    recipe_id  integer  not null references recipe (id) on delete cascade,
+    variant_id integer  not null references item_variants (id) on delete restrict,
+    quantity   smallint not null check (quantity > 0),
+    position   smallint not null default 0,
 
     -- ensures one copy of ingredient per recipe
     constraint uq_recipe_ingredients_recipe_variant
