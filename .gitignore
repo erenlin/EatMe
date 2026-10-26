@@ -1,2 +1,7 @@
 # JetBrains IDE settings
 .idea/
+
+# Environment variables
+.env
+.env.*
+!.env.example
