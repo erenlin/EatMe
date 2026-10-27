@@ -4,23 +4,22 @@ import (
 	"net/http"
 
 	"eatme/internal/api/handlers"
+	"eatme/internal/config"
+	"eatme/internal/controller"
 	"eatme/internal/store"
 )
 
 // NewRouter creates the HTTP router for the app.
-func NewRouter(dataStore *store.Store) http.Handler {
+func NewRouter(cfg config.Config, dataStore *store.Store) http.Handler {
 	mux := http.NewServeMux()
 
 	healthHandler := handlers.NewHealthHandler()
-	// userHandler := handlers.NewUserHandler(dataStore)
-	authHandler := handlers.NewAuthHandler()
+	authController := controller.NewAuthController(cfg, dataStore)
 
 	mux.Handle("/health", healthHandler)
-	// mux.HandleFunc("/users", userHandler.ListUsers)
-	// mux.HandleFunc("/users/create", userHandler.CreateUser)
-
-	mux.HandleFunc("/login", authHandler.Login)
-    mux.HandleFunc("/me", authHandler.RequireAuth(authHandler.Me))
+	mux.HandleFunc("/create", authController.Create)
+	mux.HandleFunc("/login", authController.Login)
+	mux.HandleFunc("/me", authController.RequireAuth(authController.Me))
 
 	return mux
 }

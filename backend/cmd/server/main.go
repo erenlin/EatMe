@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -13,8 +14,14 @@ import (
 
 func main() {
 	cfg := config.Load()
-	dataStore := store.NewStore()
-	httpHandler := api.NewRouter(dataStore)
+
+	dataStore, err := store.NewStore(context.Background(), cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("db connection failed: %v", err)
+	}
+	defer dataStore.Close()
+
+	httpHandler := api.NewRouter(cfg, dataStore)
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
