@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -12,6 +11,8 @@ import (
 	"eatme/internal/config"
 	"eatme/internal/model"
 	"eatme/internal/store"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type ctxKey string
@@ -25,6 +26,15 @@ type AuthController struct {
 
 func NewAuthController(cfg config.Config, s *store.Store) *AuthController {
 	return &AuthController{cfg: cfg, store: s}
+}
+
+type CreateRequest struct {
+	FirstName   string `json:"first_name"`
+	LastName    string `json:"last_name"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	DateOfBirth string `json:"date_of_birth"`
+	Gender      string `json:"gender"`
 }
 
 type CredentialsRequest struct {
@@ -42,26 +52,30 @@ func (c *AuthController) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	var req CredentialsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Username == "" || req.Password == "" {
+
+	var req CreateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" || req.Password == "" {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	hash, err := model.HashPassword(req.Password)
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
-	if err := c.store.CreateUser(r.Context(), req.Username, hash); err != nil {
-		if errors.Is(err, store.ErrUserExists) {
-			http.Error(w, "user already exists", http.StatusConflict)
-			return
-		}
-		http.Error(w, "server error", http.StatusInternalServerError)
+
+	id, err := c.store.CreateUser(r.Context(), req.FirstName, req.LastName,
+		strings.ToLower(strings.TrimSpace(req.Email)), string(hash), req.DateOfBirth, req.Gender)
+	if err != nil {
+		log.Printf("create user failed: %v", err)
+		http.Error(w, "could not create user 1", http.StatusBadRequest)
 		return
 	}
-	log.Printf("DEBUG saved user=%s hash=%s", req.Username, hash) // remove later
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(map[string]int{"id": id})
 }
 
 // Login verifies the password against the stored hash and issues a 23h JWT.

@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
+	// "github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -39,13 +39,14 @@ func NewStore(ctx context.Context, databaseURL string) (*Store, error) {
 
 func (s *Store) Close() { s.pool.Close() }
 
-func (s *Store) CreateUser(ctx context.Context, username, passwordHash string) error {
-	_, err := s.pool.Exec(ctx, createUserSQL, username, passwordHash)
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique_violation
-		return ErrUserExists
-	}
-	return err
+func (s *Store) CreateUser(ctx context.Context, first, last, email, passwordHash, dob, gender string) (int, error) {
+	var id int
+	err := s.pool.QueryRow(ctx,
+		`select returned_user_id
+		 from usp_new_user($1, $2, $3, $4, $5, $6::date, $7::gender)`,
+		first, last, email, passwordHash, "", dob, gender,
+	).Scan(&id)
+	return id, err
 }
 
 func (s *Store) GetPasswordHash(ctx context.Context, username string) (string, error) {
