@@ -3,13 +3,16 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"eatme/internal/auth"
 	"eatme/internal/config"
-	"eatme/internal/model"
+
+	// "eatme/internal/model"
 	"eatme/internal/store"
 
 	"golang.org/x/crypto/bcrypt"
@@ -18,6 +21,16 @@ import (
 type ctxKey string
 
 const usernameKey ctxKey = "username"
+
+const minLoginTime = 500 * time.Millisecond
+
+// dummyHash is compared against when the email doesn't exist, so timing doesn't reveal it.
+var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("dummy-password"), bcrypt.DefaultCost)
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
 type AuthController struct {
 	cfg   config.Config
@@ -84,23 +97,50 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	var req CredentialsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Username == "" || req.Password == "" {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+
+	var req LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" || req.Password == "" {
+		http.Error(w, "invalid email or password", http.StatusUnauthorized)
 		return
 	}
-	hash, err := c.store.GetPasswordHash(r.Context(), req.Username)
-	if err != nil || !model.CheckPassword(hash, req.Password) {
-		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+
+	start := time.Now()
+	// Every outcome waits until minLoginTime has passed.
+	pad := func() {
+		if d := minLoginTime - time.Since(start); d > 0 {
+			time.Sleep(d)
+		}
+	}
+	fail := func() {
+		pad()
+		http.Error(w, "invalid email or password", http.StatusUnauthorized)
+	}
+
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	_, hash, err := c.store.FetchUser(r.Context(), email)
+	if err != nil {
+		if !errors.Is(err, store.ErrUserNotFound) {
+			log.Printf("login lookup failed: %v", err)
+		}
+		_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(req.Password)) // dummy compare
+		fail()
 		return
 	}
-	token, err := auth.IssueToken([]byte(c.cfg.JWTSecret), req.Username)
+
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.Password)) != nil {
+		fail()
+		return
+	}
+
+	token, err := auth.IssueToken([]byte(c.cfg.JWTSecret), email)
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
+
+	pad()
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(LoginResponse{Token: token})
+	_ = json.NewEncoder(w).Encode(map[string]string{"token": token})
 }
 
 // Me returns the username from the validated token.

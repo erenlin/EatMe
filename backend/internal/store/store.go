@@ -49,11 +49,16 @@ func (s *Store) CreateUser(ctx context.Context, first, last, email, passwordHash
 	return id, err
 }
 
-func (s *Store) GetPasswordHash(ctx context.Context, username string) (string, error) {
+// FetchUser calls usp_fetch_user. Returns ErrUserNotFound when the email isn't registered.
+func (s *Store) FetchUser(ctx context.Context, email string) (int, string, error) {
+	var id int
 	var hash string
-	err := s.pool.QueryRow(ctx, getPasswordHashSQL, username).Scan(&hash)
+	err := s.pool.QueryRow(ctx,
+		`select returned_user_id, returned_password_hash from usp_fetch_user($1)`,
+		email,
+	).Scan(&id, &hash)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", ErrUserNotFound
+		return 0, "", ErrUserNotFound
 	}
-	return hash, err
+	return id, hash, err
 }
