@@ -1,35 +1,38 @@
+--  ================================================================================================================  --
+--    -. QUERY INITIALIZATION                                                                                         --
+--  ================================================================================================================  --
+
+drop schema if exists kitchen cascade;
+create schema kitchen;
+set search_path = kitchen, public;
+
+--  ================================================================================================================  --
+--    -. MODULES                                                                                                      --
+--  ================================================================================================================  --
+
 create extension if not exists pgcrypto;
 
 --  ================================================================================================================  --
---    ADMINISTRATION TABLES                                                                                           --
+--    SECTION A -. ADMINISTRATION TABLES                                                                              --
 --  ================================================================================================================  --
 
-do
-$$
-    begin
-        create type gender as enum ('Male', 'Female', 'Others');
-    exception
-        when duplicate_object then null;
-
-    end
-$$;
-
+create type gender as enum ('Male', 'Female', 'Others');
 
 create table if not exists users
 (
-    id            integer generated always as identity primary key,
-    first_name    varchar     not null,
-    last_name     varchar     not null,
+    id                  integer generated always as identity primary key,
+    first_name          varchar not null,
+    last_name           varchar not null,
 
-    email         varchar     not null unique,
-    password_hash text        not null,
+    email               varchar not null unique,
+    password_hash       text not null,
 
-    phone_number  varchar,
-    date_of_birth date        not null,
-    user_gender   gender      not null,
+    phone_number        varchar default null,
+    date_of_birth       date not null,
+    user_gender         gender not null,
 
-    created_at    timestamptz not null default now(),
-    updated_at    timestamptz not null default now()
+    created_at          timestamptz not null default now(),
+    updated_at          timestamptz not null default now()
 );
 
 
@@ -85,6 +88,7 @@ create table if not exists items
     updated_at timestamptz not null default now(),
     constraint uq_items_user_name unique (user_id, item_name)
 );
+
 
 create table if not exists users
 (
@@ -146,36 +150,12 @@ create table if not exists user_settings
 
 
 --  ================================================================================================================  --
---    PERMANENT INVENTORY TABLES                                                                                      --
+--    SECTION B -. PERMANENT INVENTORY TABLES                                                                         --
 --  ================================================================================================================  --
 
-do
-$$
-    begin
-        create type storage as enum ('room', 'fridge', 'freezer');
-    exception
-        when duplicate_object then null;
-    end
-$$;
-
-do
-$$
-    begin
-        create type counting as enum ('divisible', 'numerable');
-    exception
-        when duplicate_object then null;
-    end
-$$;
-
-do
-$$
-    begin
-        create type barcode as enum ('gtin', 'qr', 'code128');
-    exception
-        when duplicate_object then null;
-    end
-$$;
-
+create type storage as enum ('room', 'fridge', 'freezer');
+create type counting as enum ('divisible', 'numerable');
+create type barcode as enum ('gtin', 'qr', 'code128');
 
 create table if not exists items
 (
@@ -269,7 +249,7 @@ create table if not exists nutrition
     sodium_mg       numeric(8, 2) check (sodium_mg >= 0),
     created_at      timestamptz   not null default now(),
 
-    -- sub-components can't exceed their parent
+    -- subcomponents can't exceed their parent
     constraint chk_nutrition_sugar_within_carbs
         check (sugar_g is null or sugar_g <= carbohydrate_g),
     constraint chk_nutrition_sat_fat_within_fat
@@ -351,5 +331,30 @@ create table if not exists recipe_ingredients
     constraint uq_recipe_ingredients_recipe_variant
         unique (recipe_id, variant_id)
 );
+
+
+--  ================================================================================================================  --
+--    SECTION Z -. LOGGING                                                                                             --
+--  ================================================================================================================  --
+
+create type log_action as enum ('insert', 'update', 'delete', 'login', 'share');
+create type table_name as enum ('users', 'login');
+
+create table logs
+(
+    id                  integer generated always as identity primary key,
+    logged_at           timestamptz not null default now(),
+
+    user_id             integer references users (id) on delete set null,
+    action              log_action not null,
+    table_name          table_name not null,
+
+    row_id              integer,
+    successful          boolean not null default true,
+    details             jsonb
+);
+
+create index ix_logs_table_row on logs (table_name, row_id);
+create index ix_logs_logged_at on logs (logged_at);
 
 --  ================================================= END OF FILE ==================================================  --
