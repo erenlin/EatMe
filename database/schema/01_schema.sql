@@ -337,7 +337,7 @@ create table if not exists recipe_ingredients
 --    SECTION Z -. LOGGING                                                                                             --
 --  ================================================================================================================  --
 
-create type log_action as enum ('insert', 'update', 'delete', 'login', 'share');
+create type log_action as enum ('insert', 'update', 'delete', 'login', 'share','revoke');
 create type table_name as enum ('users', 'users_share');
 
 create table logs
