@@ -5,7 +5,7 @@
 set search_path = kitchen, public;
 
 --  ================================================================================================================  --
---    A4. USER SHARE FETCH                                                                                            --
+--    A4a. USER SHARE FETCH                                                                                           --
 --  ================================================================================================================  --
 
 create or replace function usp_list_grants (
@@ -40,24 +40,25 @@ begin
     -- Step 02: Return grants table; active first (newest grant first), then revoked (newest revoke first)
     return query
         select
-            us.id,
-            us.grantee_user_id,
+            share.id,
+            share.grantee_user_id,
 
             u.first_name,
             u.last_name,
             u.email,
 
-            us.created_at,
-            us.revoked_at,
-            us.revoked_at is null
+            share.created_at,
+            share.revoked_at,
+            share.revoked_at is null
         from
-            users_share us
-                join users u on u.id = us.grantee_user_id
+            users_share share
+        join
+            users u on u.id = share.grantee_user_id
         where
-            us.grantor_user_id = rarg_user_id
+            share.grantor_user_id = rarg_user_id
         order by
-            us.revoked_at is not null,
-            coalesce(us.revoked_at, us.created_at) desc;
+            share.revoked_at is not null,
+            coalesce(share.revoked_at, share.created_at) desc;
 
     end;
 $$ language plpgsql;
