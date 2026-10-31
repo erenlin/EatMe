@@ -17,7 +17,6 @@ var (
 
 var createUserSQL string
 
-
 var getPasswordHashSQL string
 
 // Store is the Postgres-backed data layer.
@@ -43,7 +42,7 @@ func (s *Store) CreateUser(ctx context.Context, first, last, email, passwordHash
 	var id int
 	err := s.pool.QueryRow(ctx,
 		`select returned_user_id
-		 from usp_new_user($1, $2, $3, $4, $5, $6::date, $7::gender)`,
+		 from kitchen.usp_new_user($1, $2, $3, $4, $5, $6::date, $7::kitchen.gender)`,
 		first, last, email, passwordHash, "", dob, gender,
 	).Scan(&id)
 	return id, err
