@@ -15,6 +15,7 @@ import (
 	// "eatme/internal/model"
 	"eatme/internal/store"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -82,7 +83,14 @@ func (c *AuthController) Create(w http.ResponseWriter, r *http.Request) {
 		strings.ToLower(strings.TrimSpace(req.Email)), string(hash), req.DateOfBirth, req.Gender)
 	if err != nil {
 		log.Printf("create user failed: %v", err)
-		http.Error(w, "could not create user 1", http.StatusBadRequest)
+
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			http.Error(w, "an account with this email already exists", http.StatusConflict)
+			return
+		}
+
+		http.Error(w, "could not create user", http.StatusBadRequest)
 		return
 	}
 
