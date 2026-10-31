@@ -58,9 +58,14 @@ declare
 begin
     -- Step 01: Payload Validation
 
-    if p_user_id is null or p_item_id is null then
-        raise exception '% %: user id and item id are required', action_name, tabled_name
-            using errcode = 'not_null_violation';
+    if p_user_id is null then
+        raise exception '% %: user id is required', action_name, tabled_name
+            using errcode = 'not_null_violation', detail = 'user_id';
+    end if;
+
+    if p_item_id is null then
+        raise exception '% %: item id is required', action_name, tabled_name
+            using errcode = 'not_null_violation', detail = 'item_id';
     end if;
 
     if v_name is null or v_name = '' then
@@ -118,50 +123,55 @@ begin
                                using errcode = 'no_data_found', detail = 'item_id';
     end if;
 
-    -- Step 03: Check for a duplicate variant name under this item (case-insensitive)
-    select
-        iv.id
-    into
-        v_existing_variant_id
-    from
-        item_variants iv
-    where
-        iv.item_id = p_item_id
-      and lower(iv.variant_name) = lower(v_name);
+    -- Step 03: Insert new variant record; the unique index rejects duplicates (any case)
+    begin
+        insert into item_variants (item_id, user_id, variant_name,
+                                   typical_weight_grams, serving_grams,
+                                   counting_method, default_store_mode, icon_png)
+        values (p_item_id, p_user_id, v_name,
+                p_typical_weight_grams, p_serving_grams,
+                v_counting, v_store, p_icon_png)
+        returning
+            item_variants.id,
+            item_variants.item_id,
+            item_variants.variant_name,
+            item_variants.typical_weight_grams,
+            item_variants.serving_grams,
+            item_variants.counting_method,
+            item_variants.default_store_mode,
+            item_variants.created_at
+        into
+            v_out_variant_id,
+            v_out_item_id,
+            v_out_variant_name,
+            v_out_typical_weight,
+            v_out_serving_grams,
+            v_out_counting,
+            v_out_store,
+            v_out_created_at;
+    exception
+        when unique_violation then
+            select
+                iv.id
+            into
+                v_existing_variant_id
+            from
+                item_variants iv
+            where
+                iv.item_id = p_item_id
+              and lower(iv.variant_name) = lower(v_name);
 
-    if found then
-        raise exception '% %: variant "%" already exists for this item (variant #%)',
-            action_name, tabled_name, v_name, v_existing_variant_id
-            using errcode = 'unique_violation', detail = 'variant_name';
-    end if;
+            raise exception '% %: variant "%" already exists for this item (variant #%)',
+                action_name, tabled_name, v_name, v_existing_variant_id
+                using errcode = 'unique_violation', detail = 'variant_name';
 
-    -- Step 04: Insert new variant record
-    insert into item_variants (item_id, user_id, variant_name,
-                               typical_weight_grams, serving_grams,
-                               counting_method, default_store_mode, icon_png)
-    values (p_item_id, p_user_id, v_name,
-            p_typical_weight_grams, p_serving_grams,
-            v_counting, v_store, p_icon_png)
-    returning
-        item_variants.id,
-        item_variants.item_id,
-        item_variants.variant_name,
-        item_variants.typical_weight_grams,
-        item_variants.serving_grams,
-        item_variants.counting_method,
-        item_variants.default_store_mode,
-        item_variants.created_at
-    into
-        v_out_variant_id,
-        v_out_item_id,
-        v_out_variant_name,
-        v_out_typical_weight,
-        v_out_serving_grams,
-        v_out_counting,
-        v_out_store,
-        v_out_created_at;
+        when foreign_key_violation then
+            -- item was deleted after the Step 02 check
+            raise exception '% %: item not found', action_name, tabled_name
+                using errcode = 'no_data_found', detail = 'item_id';
+    end;
 
-    -- Step 05: Log successful operation (icon left out of the details)
+    -- Step 04: Log successful operation (icon left out of the details)
     perform usp_log_operation (
         p_user_id       := p_user_id,
         p_action        := action_name,
@@ -171,7 +181,7 @@ begin
                                               'variant_name', v_out_variant_name)
     );
 
-    -- Step 06: Return the result
+    -- Step 05: Return the result
     return query select v_out_variant_id      as variant_id,
                         v_out_item_id         as item_id,
                         v_out_variant_name    as variant_name,
