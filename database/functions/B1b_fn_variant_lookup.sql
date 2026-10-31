@@ -8,13 +8,14 @@ set search_path = kitchen, public;
 --    B1b. VARIANT LOOKUP                                                                                             --
 --  ================================================================================================================  --
 
---    Fuzzy search over one item's variants. Empty query returns all of them (alphabetical).
---    Prefix matches rank first, then trigram similarity.
+--    Fuzzy search over one item's variants, optionally including variants shared with the user.
+--    Empty query returns all of them (alphabetical). Prefix matches rank first, then trigram similarity.
 
 create or replace function usp_variant_lookup (
     p_user_id   int,
     p_item_id   int,
-    p_query     varchar default ''
+    p_query     varchar default '',
+    p_shared    boolean default false
 )
     returns table
 (
@@ -27,7 +28,9 @@ create or replace function usp_variant_lookup (
     default_store_mode      store,
 
     icon_png                bytea,
-    created_at              timestamptz
+    created_at              timestamptz,
+
+    owner_user_id           integer
 )
     language plpgsql
     stable
@@ -47,11 +50,24 @@ begin
             item_variants.default_store_mode,
 
             item_variants.icon_png,
-            item_variants.created_at
+            item_variants.created_at,
+
+            item_variants.user_id
         from
             item_variants, search
         where
-            item_variants.user_id = p_user_id
+            (
+                item_variants.user_id = p_user_id
+                    or (
+                    coalesce(p_shared, false)
+                        and item_variants.user_id in (
+                        select users_share.grantor_user_id
+                        from users_share
+                        where users_share.grantee_user_id = p_user_id
+                          and users_share.revoked_at is null  -- active grants only
+                    )
+                    )
+                )
           and item_variants.item_id = p_item_id
           and (
             search.term = ''
@@ -61,7 +77,8 @@ begin
         order by
             (item_variants.variant_name ilike search.term || '%') desc,
             similarity(item_variants.variant_name, search.term) desc,
-            item_variants.variant_name
+            item_variants.variant_name,
+            (item_variants.user_id = p_user_id) desc               -- own copy before a shared one of the same name
         limit 100;
 end
 $$;
