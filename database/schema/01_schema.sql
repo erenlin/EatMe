@@ -11,6 +11,7 @@ set search_path = kitchen, public;
 --  ================================================================================================================  --
 
 create extension if not exists pgcrypto with schema public;
+create extension if not exists pg_trgm  with schema public;
 
 --  ================================================================================================================  --
 --    SECTION A -. ADMINISTRATION TABLES                                                                              --
@@ -179,6 +180,9 @@ alter table item_variants
             references expiry (variant_id, store_mode)
             deferrable initially deferred;
 
+create unique index if not exists uq_item_variants_item_name_ci
+    on item_variants (item_id, lower(variant_name));
+
 
 create table if not exists barcodes (
     id              integer         generated always as identity primary key,
@@ -192,6 +196,7 @@ create table if not exists barcodes (
     constraint uq_barcodes_variant_code
         unique (variant_id, symbology, code)
 );
+
 
 
 --  ================================================================================================================  --
@@ -325,7 +330,7 @@ create table if not exists nutrition (
 --  ================================================================================================================  --
 
 create type log_action as enum ('insert', 'update', 'delete', 'login', 'share','revoke');
-create type table_name as enum ('users', 'users_share');
+create type table_name as enum ('users', 'users_share', 'items', 'item_variants');
 
 create table if not exists logs (
     id              integer         generated always as identity primary key,
