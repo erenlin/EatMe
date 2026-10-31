@@ -73,7 +73,11 @@ begin
         v_out_last_name,
         v_out_email;
 
-    -- Step 04: Log successful operation
+    -- Step 04: Insert new user settings record
+    insert into user_settings (user_id)
+    values (v_out_user_id);
+
+    -- Step 05: Log successful operation
     perform usp_log_operation (
         p_user_id       := v_out_user_id,
         p_action        := action_name,
@@ -82,7 +86,7 @@ begin
         p_details       := jsonb_build_object('email', v_out_email)
     );
 
-    -- Step 05: Return the result
+    -- Step 06: Return the result
     return query select v_out_user_id     as returned_user_id,
                         v_out_first_name  as returned_first_name,
                         v_out_last_name   as returned_last_name,
