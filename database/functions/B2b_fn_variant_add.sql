@@ -15,9 +15,12 @@ create or replace function usp_variant_add (
     p_user_id               int,
     p_item_id               int,
     p_variant_name          varchar,
+
     p_typical_weight_grams  int,
     p_serving_grams         int,
+    p_default_expiry_days   int,
     p_counting_method       counting    default 'divisible',
+
     p_default_store_mode    store       default 'room',
     p_icon_png              bytea       default null
 )
@@ -71,6 +74,11 @@ begin
     if v_name is null or v_name = '' then
         raise exception '% %: variant name is required', action_name, tabled_name
             using errcode = 'not_null_violation', detail = 'variant_name';
+    end if;
+
+    if p_default_expiry_days is null or p_default_expiry_days <= 0 then
+        raise exception '% %: default expiry must be greater than 0 days', action_name, tabled_name
+            using errcode = 'check_violation', detail = 'default_expiry_days';
     end if;
 
     --
@@ -149,6 +157,12 @@ begin
             v_out_counting,
             v_out_store,
             v_out_created_at;
+
+        insert into
+            expiry (variant_id, store_mode, expiry_days)
+        values (
+            v_out_variant_id, v_out_store, p_default_expiry_days);
+
     exception
         when unique_violation then
             select
