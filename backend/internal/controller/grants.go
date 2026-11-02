@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"errors"
+	"strconv"
 	"strings"
+	"errors"
 
 	"eatme/internal/store"
 )
@@ -102,5 +103,37 @@ func (g *GrantController) Share(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(result)
+}
+
+// Revoke revokes one of the logged-in user's grants. The grant id comes from the URL.
+func (g *GrantController) Revoke(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(userIDKey).(int)
+	if !ok || userID == 0 {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	grantID, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || grantID <= 0 {
+		http.Error(w, "invalid grant id", http.StatusBadRequest)
+		return
+	}
+
+	result, err := g.store.RevokeShare(r.Context(), userID, grantID)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrGrantNotFound):
+			http.Error(w, "grant not found", http.StatusNotFound)
+		case errors.Is(err, store.ErrAlreadyRevoked):
+			http.Error(w, "grant already revoked", http.StatusConflict)
+		default:
+			log.Printf("revoke share failed: %v", err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(result)
 }
