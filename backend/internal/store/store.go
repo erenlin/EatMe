@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -21,9 +22,19 @@ type Grant struct {
 	IsActive         bool       `json:"is_active"`
 }
 
+// ShareResult is the row returned by usp_grant_share.
+type ShareResult struct {
+	GrantID       int       `json:"grant_id"`
+	GranteeUserID int       `json:"grantee_user_id"`
+	GrantedAt     time.Time `json:"granted_at"`
+}
+
 var (
 	ErrUserExists   = errors.New("user already exists")
 	ErrUserNotFound = errors.New("user not found")
+	ErrSelfGrant       = errors.New("grantee is the acting user")
+	ErrGranteeNotFound = errors.New("grantee does not exist")
+	ErrAlreadyShared   = errors.New("already shared")
 )
 
 var createUserSQL string
@@ -101,4 +112,28 @@ func (s *Store) ListGrants(ctx context.Context, userID int) ([]Grant, error) {
 		grants = append(grants, g)
 	}
 	return grants, rows.Err()
+}
+
+
+func (s *Store) GrantShare(ctx context.Context, grantorID, granteeID int) (ShareResult, error) {
+	var out ShareResult
+	err := s.pool.QueryRow(ctx,
+		`select returned_grant_id, returned_grantee_user_id, returned_granted_at
+		 from kitchen.usp_grant_share($1, $2)`,
+		grantorID, granteeID,
+	).Scan(&out.GrantID, &out.GranteeUserID, &out.GrantedAt)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23514":
+			return ShareResult{}, ErrSelfGrant
+		case "23503":
+			return ShareResult{}, ErrGranteeNotFound
+		case "23505":
+			return ShareResult{}, ErrAlreadyShared
+		}
+	}
+	out.GrantedAt = out.GrantedAt.UTC()
+	return out, err
 }

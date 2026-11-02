@@ -38,8 +38,11 @@ func ParseToken(secret []byte, tokenStr string) (Claims, error) {
 		jwt.WithValidMethods([]string{"HS256"}),
 		jwt.WithExpirationRequired(),
 	)
-	if err != nil || !tok.Valid || claims.UserID == 0 {
-		return Claims{}, errors.New("invalid token")
+	if err != nil {
+		return Claims{}, err // real reason, e.g. signature invalid or expired
+	}
+	if !tok.Valid || claims.UserID == 0 {
+		return Claims{}, errors.New("token has no user_id")
 	}
 	return claims, nil
 }
