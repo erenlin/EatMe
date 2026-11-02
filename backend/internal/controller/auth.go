@@ -173,6 +173,7 @@ func (c *AuthController) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 		claims, err := auth.ParseToken([]byte(c.cfg.JWTSecret), parts[1])
 		if err != nil {
+			log.Printf("token rejected: %v", err)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}

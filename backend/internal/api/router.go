@@ -45,6 +45,7 @@ func NewRouter(cfg config.Config, dataStore *store.Store) http.Handler {
 		}
 	}))
 	mux.HandleFunc("/grants", authController.RequireAuth(grantController.List))
+	mux.HandleFunc("/grants", authController.RequireAuth(grantController.Handle))
 
 	return mux
 }
