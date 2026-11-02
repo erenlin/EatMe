@@ -15,11 +15,13 @@ func NewRouter(cfg config.Config, dataStore *store.Store) http.Handler {
 
 	healthHandler := handlers.NewHealthHandler()
 	authController := controller.NewAuthController(cfg, dataStore)
+	grantController := controller.NewGrantController(dataStore)
 
 	mux.Handle("/health", healthHandler)
 	mux.HandleFunc("/create", authController.Create)
 	mux.HandleFunc("/login", authController.Login)
 	mux.HandleFunc("/me", authController.RequireAuth(authController.Me))
+	mux.HandleFunc("/grants", authController.RequireAuth(grantController.List))
 
 	return mux
 }
