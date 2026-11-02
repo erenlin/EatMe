@@ -29,12 +29,20 @@ type ShareResult struct {
 	GrantedAt     time.Time `json:"granted_at"`
 }
 
+type RevokeResult struct {
+	GrantID       int       `json:"grant_id"`
+	GranteeUserID int       `json:"grantee_user_id"`
+	RevokedAt     time.Time `json:"revoked_at"`
+}
+
 var (
 	ErrUserExists   = errors.New("user already exists")
 	ErrUserNotFound = errors.New("user not found")
 	ErrSelfGrant       = errors.New("grantee is the acting user")
 	ErrGranteeNotFound = errors.New("grantee does not exist")
 	ErrAlreadyShared   = errors.New("already shared")
+	ErrGrantNotFound  = errors.New("grant not found")
+	ErrAlreadyRevoked = errors.New("grant already revoked")
 )
 
 var createUserSQL string
@@ -334,5 +342,26 @@ func (s *Store) GrantShare(ctx context.Context, grantorID, granteeID int) (Share
 		}
 	}
 	out.GrantedAt = out.GrantedAt.UTC()
+	return out, err
+}
+
+func (s *Store) RevokeShare(ctx context.Context, userID, grantID int) (RevokeResult, error) {
+	var out RevokeResult
+	err := s.pool.QueryRow(ctx,
+		`select returned_grant_id, returned_grantee_user_id, returned_revoked_at
+		 from kitchen.usp_revoke_share($1, $2)`,
+		userID, grantID,
+	).Scan(&out.GrantID, &out.GranteeUserID, &out.RevokedAt)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "P0002":
+			return RevokeResult{}, ErrGrantNotFound
+		case "55000":
+			return RevokeResult{}, ErrAlreadyRevoked
+		}
+	}
+	out.RevokedAt = out.RevokedAt.UTC()
 	return out, err
 }
