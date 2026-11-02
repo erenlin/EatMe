@@ -163,7 +163,7 @@ create table if not exists expiry (
     store_mode      store           not null,
 
     -- Default shelf life in days - starting point for the instance's expiry slider
-    expiry_days     smallint        not null check (expiry_days > 0),
+    expiry_days     smallint        check (expiry_days > 0),
     created_at      timestamptz     not null default now(),
 
     -- One expiry value per variant per storage mode
@@ -193,8 +193,6 @@ create table if not exists barcodes (
 --    SECTION C -. EPHEMERAL INVENTORY TABLES                                                                         --
 --  ================================================================================================================  --
 
-create type consumption as enum ('consumed', 'discarded', 'expired');
-
 create table if not exists item_instances (
     id                  integer         generated always as identity primary key,
     variant_id          integer         not null
@@ -210,24 +208,30 @@ create table if not exists item_instances (
     -- Days added to or subtracted from the computed expiry. Negative means staler.
     expiry_modifier     smallint        not null default 0,
 
-    -- Consumption tracked in grams; servings and units are converted in the app
-    grams_consumed      integer         not null default 0 check (grams_consumed >= 0),
-    consumption_reason  consumption     default null,
-    created_at          timestamptz     not null default now(),
-    removed_at          timestamptz     default null,
-
-    -- Cannot consume more than the instance holds
-    constraint chk_item_instances_grams_within_total
-      check (grams_consumed <= quantity * unit_weight_grams),
-
-    -- A reason is given exactly when the instance is removed
-    constraint chk_item_instances_removed_consistent
-      check ((removed_at is null) = (consumption_reason is null)),
-
-    -- Cannot be removed before it was added
-    constraint chk_item_instances_removed_after_added
-      check (removed_at is null or removed_at >= added_at)
+    created_at          timestamptz     not null default now()
 );
+
+
+create type consumption as enum ('consumed', 'discarded', 'expired');
+
+create table if not exists item_consumption (
+    id                  integer         generated always as identity primary key,
+    instance_id         integer         not null
+        references item_instances (id) on delete cascade,
+
+    -- Who used it: the owner, or a grantee eating from a shared inventory
+    user_id             integer
+    references users (id) on delete set null,
+
+    -- Amount taken out of the instance by this event
+    grams               integer         not null check (grams > 0),
+    reason              consumption     not null default 'consumed',
+
+    consumed_at         timestamptz     not null default now()
+);
+
+create index if not exists ix_item_consumption_instance
+    on item_consumption (instance_id);
 
 
 --  ================================================================================================================  --
@@ -319,8 +323,8 @@ create table if not exists nutrition (
 --    SECTION F -. LOGGING                                                                                            --
 --  ================================================================================================================  --
 
-create type log_action as enum ('insert', 'update', 'delete', 'login', 'share','revoke');
-create type table_name as enum ('users', 'users_share', 'items', 'item_variants');
+create type log_action as enum ('insert', 'update', 'delete', 'login', 'share','revoke', 'select');
+create type table_name as enum ('users', 'users_share', 'items', 'item_variants', 'expiry', 'item_instances');
 
 create table if not exists logs (
     id              integer         generated always as identity primary key,
@@ -341,12 +345,3 @@ create index ix_logs_table_row on logs (table_name, row_id);
 create index ix_logs_logged_at on logs (logged_at);
 
 --  ================================================= END OF FILE ==================================================  --
-
-SELECT n.nspname AS schema,
-       t.typname AS enum_name,
-       string_agg(e.enumlabel, ', ' ORDER BY e.enumsortorder) AS values
-FROM pg_type t
-         JOIN pg_enum e      ON e.enumtypid = t.oid
-         JOIN pg_namespace n ON n.oid = t.typnamespace
-GROUP BY n.nspname, t.typname
-ORDER BY 1, 2;

@@ -11,3 +11,6 @@ create index if not exists idx_item_instances_variant_active
 -- "which recipes use this variant?"
 create index if not exists idx_recipe_ingredients_variant
     on recipe_ingredients (variant_id);
+
+create index if not exists ix_item_consumption_instance
+    on item_consumption (instance_id);
