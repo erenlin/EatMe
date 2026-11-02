@@ -170,16 +170,6 @@ create table if not exists expiry (
     primary key (variant_id, store_mode)
 );
 
-
--- Every variant must have an expiry row for its default storage mode.
--- Must be added after expiry because the two tables reference each other;
--- deferred so the variant and its expiry row can be inserted in the same transaction.
-alter table item_variants
-    add constraint fk_item_variants_default_expiry
-        foreign key (id, default_store_mode)
-            references expiry (variant_id, store_mode)
-            deferrable initially deferred;
-
 create unique index if not exists uq_item_variants_item_name_ci
     on item_variants (item_id, lower(variant_name));
 
@@ -351,3 +341,12 @@ create index ix_logs_table_row on logs (table_name, row_id);
 create index ix_logs_logged_at on logs (logged_at);
 
 --  ================================================= END OF FILE ==================================================  --
+
+SELECT n.nspname AS schema,
+       t.typname AS enum_name,
+       string_agg(e.enumlabel, ', ' ORDER BY e.enumsortorder) AS values
+FROM pg_type t
+         JOIN pg_enum e      ON e.enumtypid = t.oid
+         JOIN pg_namespace n ON n.oid = t.typnamespace
+GROUP BY n.nspname, t.typname
+ORDER BY 1, 2;
