@@ -15,11 +15,34 @@ func NewRouter(cfg config.Config, dataStore *store.Store) http.Handler {
 
 	healthHandler := handlers.NewHealthHandler()
 	authController := controller.NewAuthController(cfg, dataStore)
+	itemController := controller.NewItemController(dataStore)
 
 	mux.Handle("/health", healthHandler)
 	mux.HandleFunc("/create", authController.Create)
 	mux.HandleFunc("/login", authController.Login)
 	mux.HandleFunc("/me", authController.RequireAuth(authController.Me))
+	mux.HandleFunc("/items", authController.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			itemController.LookupItems(w, r)
+		case http.MethodPost:
+			itemController.AddItem(w, r)
+		default:
+			w.Header().Set("Allow", "GET, POST")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
+	mux.HandleFunc("/variants", authController.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			itemController.LookupVariants(w, r)
+		case http.MethodPost:
+			itemController.AddVariant(w, r)
+		default:
+			w.Header().Set("Allow", "GET, POST")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
 
 	return mux
 }
