@@ -76,8 +76,9 @@ begin
             using errcode = 'not_null_violation', detail = 'variant_name';
     end if;
 
-    if p_default_expiry_days is null or p_default_expiry_days <= 0 then
-        raise exception '% %: default expiry must be greater than 0 days', action_name, tabled_name
+    if p_default_expiry_days is null or p_default_expiry_days <= 0 or p_default_expiry_days > 3650 then
+        raise exception '% %: default expiry must be between 1 and 3650 days, got %',
+            action_name, tabled_name, p_default_expiry_days
             using errcode = 'check_violation', detail = 'default_expiry_days';
     end if;
 
