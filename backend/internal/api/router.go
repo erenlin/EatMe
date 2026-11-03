@@ -17,6 +17,7 @@ func NewRouter(cfg config.Config, dataStore *store.Store) http.Handler {
 	authController := controller.NewAuthController(cfg, dataStore)
 	itemController := controller.NewItemController(dataStore)
 	grantController := controller.NewGrantController(dataStore)
+	instanceController := controller.NewInstanceController(dataStore)
 
 	mux.Handle("/health", healthHandler)
 	mux.HandleFunc("/create", authController.Create)
@@ -46,6 +47,7 @@ func NewRouter(cfg config.Config, dataStore *store.Store) http.Handler {
 	}))
 	mux.HandleFunc("/grants", authController.RequireAuth(grantController.Handle))
 	mux.HandleFunc("POST /grants/{id}/revoke", authController.RequireAuth(grantController.Revoke))
+	mux.HandleFunc("POST /instances", authController.RequireAuth(instanceController.AddInstance))
 
 	return mux
 }
