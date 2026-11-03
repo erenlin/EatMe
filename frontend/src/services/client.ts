@@ -56,7 +56,11 @@ export async function request<T = unknown>(
   return data as T;
 }
 
-type LoginResponse = { token?: string; jwt?: string; access_token?: string };
+type LoginResponse = { 
+    token?: string; 
+    jwt?: string; 
+    access_token?: string 
+};
 
 export async function login(email: string, password: string): Promise<string> {
   const data = await request<LoginResponse>(ENDPOINTS.login, {
