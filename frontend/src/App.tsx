@@ -1,22 +1,12 @@
 import { AuthProvider } from "./features/auth/AuthProvider";
 import { useAuth } from "./hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
-
-function Home() {
-  const { user, logout } = useAuth();
-  return (
-    <main style={{ padding: "2rem" }}>
-      <h1>Logged in</h1>
-      <pre>{JSON.stringify(user, null, 2)}</pre>
-      <button onClick={logout}>Log out</button>
-    </main>
-  );
-}
+import PantryPage from "./pages/PantryPage";
 
 function Gate() {
   const { user, loading } = useAuth();
   if (loading) return null;
-  return user ? <Home /> : <LoginPage />;
+  return user ? <PantryPage /> : <LoginPage />;
 }
 
 export default function App() {
