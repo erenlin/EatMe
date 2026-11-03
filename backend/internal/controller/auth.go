@@ -22,6 +22,7 @@ import (
 type ctxKey string
 
 const usernameKey ctxKey = "username"
+const userIDKey ctxKey = "user_id"
 
 const minLoginTime = 500 * time.Millisecond
 
@@ -125,7 +126,7 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := strings.ToLower(strings.TrimSpace(req.Email))
-	_, hash, err := c.store.FetchUser(r.Context(), email)
+	userID, hash, err := c.store.FetchUser(r.Context(), email)
 	if err != nil {
 		if !errors.Is(err, store.ErrUserNotFound) {
 			log.Printf("login lookup failed: %v", err)
@@ -140,7 +141,7 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.IssueToken([]byte(c.cfg.JWTSecret), email)
+	token, err := auth.IssueToken([]byte(c.cfg.JWTSecret), userID, email)
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
@@ -170,12 +171,14 @@ func (c *AuthController) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "missing or invalid bearer token", http.StatusUnauthorized)
 			return
 		}
-		username, err := auth.ParseToken([]byte(c.cfg.JWTSecret), parts[1])
+		claims, err := auth.ParseToken([]byte(c.cfg.JWTSecret), parts[1])
 		if err != nil {
+			log.Printf("token rejected: %v", err)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		ctx := context.WithValue(r.Context(), usernameKey, username)
+		ctx := context.WithValue(r.Context(), userIDKey, claims.UserID)
+		ctx = context.WithValue(ctx, usernameKey, claims.Username)
 		next(w, r.WithContext(ctx))
 	}
 }
