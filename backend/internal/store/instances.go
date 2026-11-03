@@ -66,3 +66,48 @@ func (s *Store) AddInstance(
 
 	return instance, err
 }
+
+
+// UseInstanceParams contains the inputs for consuming inventory.
+type UseInstanceParams struct {
+	UserID     int
+	InstanceID int
+	Grams      int
+}
+
+// UsedInstance represents the result of consuming inventory.
+type UsedInstance struct {
+	ConsumptionID  int `json:"consumption_id"`
+	InstanceID     int `json:"instance_id"`
+	OwnerUserID    int `json:"owner_user_id"`
+	GramsUsed      int `json:"grams_used"`
+	GramsConsumed  int `json:"grams_consumed"`
+	GramsRemaining int `json:"grams_remaining"`
+}
+
+// UseInstance records consumption using the PostgreSQL function.
+func (s *Store) UseInstance(
+	ctx context.Context,
+	params UseInstanceParams,
+) (UsedInstance, error) {
+	var result UsedInstance
+
+	err := s.pool.QueryRow(ctx,
+		`SELECT consumption_id, instance_id, owner_user_id,
+		        grams_used, grams_consumed, grams_remaining
+		 FROM kitchen.usp_instance_use($1, $2, $3)`,
+		params.UserID,
+		params.InstanceID,
+		params.Grams,
+	).Scan(
+		&result.ConsumptionID,
+		&result.InstanceID,
+		&result.OwnerUserID,
+		&result.GramsUsed,
+		&result.GramsConsumed,
+		&result.GramsRemaining,
+	)
+
+	return result, err
+}
+

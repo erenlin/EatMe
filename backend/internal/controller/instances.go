@@ -129,3 +129,82 @@ func (c *InstanceController) AddInstance(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(instance)
 }
+
+
+type UseInstanceRequest struct {
+	InstanceID int `json:"instance_id"`
+	Grams      int `json:"grams"`
+}
+
+// UseInstance handles requests to consume pantry inventory.
+// This handler must be wrapped with RequireAuth.
+func (c *InstanceController) UseInstance(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	email, ok := r.Context().Value(usernameKey).(string)
+	if !ok || email == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	userID, _, err := c.store.FetchUser(r.Context(), email)
+	if err != nil {
+		if errors.Is(err, store.ErrUserNotFound) {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+		} else {
+			log.Printf("instance use user lookup failed: %v", err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	var req UseInstanceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.InstanceID <= 0 {
+		http.Error(w, "invalid instance_id", http.StatusBadRequest)
+		return
+	}
+
+	if req.Grams <= 0 {
+		http.Error(w, "grams must be positive", http.StatusBadRequest)
+		return
+	}
+
+	result, err := c.store.UseInstance(r.Context(), store.UseInstanceParams{
+		UserID:     userID,
+		InstanceID: req.InstanceID,
+		Grams:      req.Grams,
+	})
+	if err != nil {
+		log.Printf("C1c database error: %v", err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			switch pgErr.Code {
+			case "P0002":
+				http.Error(w, "instance not found or not accessible", http.StatusNotFound)
+				return
+			case "23514":
+				http.Error(w, "grams exceeds remaining inventory", http.StatusBadRequest)
+				return
+			case "23502", "22P02", "22003":
+				http.Error(w, "invalid consumption data", http.StatusBadRequest)
+				return
+			}
+		}
+
+		log.Printf("instance use failed: %v", err)
+		http.Error(w, "could not use instance", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(result)
+}
