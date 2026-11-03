@@ -39,7 +39,7 @@ export async function request<T = unknown>(
   });
 
   const text = await res.text();
-  let data: Record<string, unknown> | null = null;
+  let data: Record<string, unknown> | null;
   try {
     data = text ? JSON.parse(text) : null;
   } catch {
