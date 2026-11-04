@@ -278,6 +278,9 @@ Reproducible bugs should be tracked in GitHub Issues with:
 - Fresh-database initialization and role setup are not automated for a new developer.
 - Automated test coverage can be expanded, especially for the full UI-to-database workflow.
 
+
 ## Project Documentation
 
-Detailed requirements, architecture, design, testing plans, and process documentation are maintained in the team's [living document](https://docs.google.com/document/d/1nkdHh2kS-S4vA5Ra053JQUwF9P4YXe8gqIupyGCVNM4/edit?tab=t.aulzpil1dd96#heading=h.7nza7ykfonwm).
+Full project requirements, architecture, design, testing plans, and process documentation are available in the team's living document.
+
+[Download the EatMe Living Document (PDF)](https://docs.google.com/document/d/1vb92Mq4vGCpuq9xHpmhAjUwD85Nq22ePbZ-8fTMNtHc/export?format=pdf)
