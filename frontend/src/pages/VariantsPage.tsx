@@ -174,7 +174,8 @@ export default function VariantsPage({ itemId, itemName, onBack }: Props) {
       )}
 
       {/* B2b: add a variant */}
-      <h2>Add a variant</h2>
+      <details className="variants-add">
+      <summary>+ Add a variant</summary>
       <form className="variants-form" onSubmit={handleAdd} noValidate>
         <label htmlFor="v-name">Name</label>
         <input id="v-name" value={name} onChange={(e) => setName(e.target.value)} />
@@ -241,6 +242,7 @@ export default function VariantsPage({ itemId, itemName, onBack }: Props) {
           {saving ? "Adding…" : "Add variant"}
         </button>
       </form>
+      </details>
     </main>
   );
 }

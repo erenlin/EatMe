@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { ApiError } from "../services/client";
 import { lookupItems, createItem, type Item } from "../services/items";
 import "../styles/PantryPage.css";
+import VariantsPage from "./VariantsPage";
 
 const MESSAGES: Record<number, string> = {
   400: "Please enter an item name.",
@@ -18,6 +19,7 @@ function messageFor(err: unknown): string {
 export default function PantryPage() {
   // ---- Sticky notes (what the page remembers) ----
   const [items, setItems] = useState<Item[]>([]);
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [search, setSearch] = useState(""); // text in the search bar
   const [activeSearch, setActiveSearch] = useState(""); // the search that was last run
   const [addItemWord, setAddItemWord] = useState(""); // text in the add box
@@ -81,6 +83,7 @@ export default function PantryPage() {
       <form className="pantry-row" onSubmit={handleSearch} role="search">
         <label htmlFor="search" className="visually-hidden">Search groceries</label>
         <input
+          onFocus={() => setSelectedItem(null)}
           id="search"
           type="search"
           placeholder="Search groceries"
@@ -130,11 +133,27 @@ export default function PantryPage() {
         <ul className="pantry-list">
           {items.map((item) => (
             <li key={item.item_id} className="pantry-item">
-              {item.item_name}
-            </li>
+  <button
+    type="button"
+    className={
+      item.item_id === selectedItem?.item_id
+        ? "pantry-item-button is-selected"
+        : "pantry-item-button"
+    }
+    onClick={() => setSelectedItem(item)}
+  >
+    {item.item_name}
+  </button>
+</li>
           ))}
         </ul>
       )}
+      {selectedItem && (
+  <VariantsPage
+    itemId={selectedItem.item_id}
+    itemName={selectedItem.item_name}
+  />
+)}
     </main>
   );
 }
