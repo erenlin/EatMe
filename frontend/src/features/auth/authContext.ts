@@ -1,5 +1,5 @@
 import { createContext } from "react";
-import type { User } from "../api/client";
+import type { User } from "../../services/client";
 
 export type AuthValue = {
   user: User | null;
