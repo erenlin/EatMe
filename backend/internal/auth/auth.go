@@ -12,13 +12,15 @@ const TokenTTL = 23 * time.Hour
 
 // Claims are the JWT claims: username plus standard expiry.
 type Claims struct {
+	UserID   int    `json:"user_id"`
 	Username string `json:"username"`
 	jwt.RegisteredClaims
 }
 
 // IssueToken returns a signed JWT holding the username that expires in 23 hours.
-func IssueToken(secret []byte, username string) (string, error) {
+func IssueToken(secret []byte, userID int, username string) (string, error) {
 	claims := Claims{
+		UserID:   userID,
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -29,7 +31,7 @@ func IssueToken(secret []byte, username string) (string, error) {
 }
 
 // ParseToken validates the token and returns the username.
-func ParseToken(secret []byte, tokenStr string) (string, error) {
+func ParseToken(secret []byte, tokenStr string) (Claims, error) {
 	var claims Claims
 	tok, err := jwt.ParseWithClaims(tokenStr, &claims,
 		func(*jwt.Token) (any, error) { return secret, nil },
@@ -37,10 +39,10 @@ func ParseToken(secret []byte, tokenStr string) (string, error) {
 		jwt.WithExpirationRequired(),
 	)
 	if err != nil {
-		return "", err
+		return Claims{}, err // real reason, e.g. signature invalid or expired
 	}
-	if !tok.Valid || claims.Username == "" {
-		return "", errors.New("invalid token")
+	if !tok.Valid || claims.UserID == 0 {
+		return Claims{}, errors.New("token has no user_id")
 	}
-	return claims.Username, nil
+	return claims, nil
 }

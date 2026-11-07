@@ -7,18 +7,69 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	// "github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type Grant struct {
+	ID               int        `json:"grant_id"`
+	GranteeUserID    int        `json:"grantee_user_id"`
+	GranteeFirstName string     `json:"grantee_first_name"`
+	GranteeLastName  string     `json:"grantee_last_name"`
+	GranteeEmail     string     `json:"grantee_email"`
+	GrantedAt        time.Time  `json:"granted_at"`
+	RevokedAt        *time.Time `json:"revoked_at"` // null if active
+	IsActive         bool       `json:"is_active"`
+}
+
+// ShareResult is the row returned by usp_grant_share.
+type ShareResult struct {
+	GrantID       int       `json:"grant_id"`
+	GranteeUserID int       `json:"grantee_user_id"`
+	GrantedAt     time.Time `json:"granted_at"`
+}
+
+type RevokeResult struct {
+	GrantID       int       `json:"grant_id"`
+	GranteeUserID int       `json:"grantee_user_id"`
+	RevokedAt     time.Time `json:"revoked_at"`
+}
+
+// Instance is one row from usp_instance_get.
+type Instance struct {
+	InstanceID      int        `json:"instance_id"`
+	UserID          int        `json:"user_id"` // owner, used for colour coding
+	VariantID       int        `json:"variant_id"`
+	ItemName        string     `json:"item_name"`
+	VariantName     string     `json:"variant_name"`
+	MatchScore      float32    `json:"match_score"`
+	StoreMode       string     `json:"store_mode"`
+	Quantity        int        `json:"quantity"`
+	UnitWeightGrams int        `json:"unit_weight_grams"`
+	TotalGrams      int        `json:"total_grams"`
+	GramsConsumed   int        `json:"grams_consumed"`
+	GramsRemaining  int        `json:"grams_remaining"`
+	ExpiryModifier  int        `json:"expiry_modifier"`
+	AddedAt         time.Time  `json:"added_at"`
+	ExpiresAt       *time.Time `json:"expires_at"` // null if no expiry
+}
+
 var (
-	ErrUserExists   = errors.New("user already exists")
-	ErrUserNotFound = errors.New("user not found")
+	ErrUserExists      = errors.New("user already exists")
+	ErrUserNotFound    = errors.New("user not found")
+	ErrSelfGrant       = errors.New("grantee is the acting user")
+	ErrGranteeNotFound = errors.New("grantee does not exist")
+	ErrAlreadyShared   = errors.New("already shared")
+	ErrGrantNotFound   = errors.New("grant not found")
+	ErrAlreadyRevoked  = errors.New("grant already revoked")
+	ErrInvalidInput    = errors.New("invalid input")
+	ErrVariantNotFound = errors.New("variant not found")
 )
 
 var createUserSQL string
-
 var getPasswordHashSQL string
+
+const minMatchScore = 0.75
 
 // Store is the Postgres-backed data layer.
 type Store struct {
@@ -259,4 +310,125 @@ func (s *Store) AddVariant(
 	)
 
 	return variant, err
+}
+
+func (s *Store) ListGrants(ctx context.Context, userID int) ([]Grant, error) {
+	rows, err := s.pool.Query(ctx, `
+		select returned_grant_id, returned_grantee_user_id,
+		       returned_grantee_first_name, returned_grantee_last_name,
+		       returned_grantee_email, returned_granted_at,
+		       returned_revoked_at, returned_is_active
+		from kitchen.usp_list_grants($1)`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	grants := []Grant{} // empty list, not nil, so JSON is [] and not null
+	for rows.Next() {
+		var g Grant
+		if err := rows.Scan(&g.ID, &g.GranteeUserID, &g.GranteeFirstName,
+			&g.GranteeLastName, &g.GranteeEmail, &g.GrantedAt,
+			&g.RevokedAt, &g.IsActive); err != nil {
+			return nil, err
+		}
+		g.GrantedAt = g.GrantedAt.UTC()
+		if g.RevokedAt != nil {
+			t := g.RevokedAt.UTC()
+			g.RevokedAt = &t
+		}
+		grants = append(grants, g)
+	}
+	return grants, rows.Err()
+}
+
+func (s *Store) GrantShare(ctx context.Context, grantorID, granteeID int) (ShareResult, error) {
+	var out ShareResult
+	err := s.pool.QueryRow(ctx,
+		`select returned_grant_id, returned_grantee_user_id, returned_granted_at
+		 from kitchen.usp_grant_share($1, $2)`,
+		grantorID, granteeID,
+	).Scan(&out.GrantID, &out.GranteeUserID, &out.GrantedAt)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23514":
+			return ShareResult{}, ErrSelfGrant
+		case "23503":
+			return ShareResult{}, ErrGranteeNotFound
+		case "23505":
+			return ShareResult{}, ErrAlreadyShared
+		}
+	}
+	out.GrantedAt = out.GrantedAt.UTC()
+	return out, err
+}
+
+func (s *Store) RevokeShare(ctx context.Context, userID, grantID int) (RevokeResult, error) {
+	var out RevokeResult
+	err := s.pool.QueryRow(ctx,
+		`select returned_grant_id, returned_grantee_user_id, returned_revoked_at
+		 from kitchen.usp_revoke_share($1, $2)`,
+		userID, grantID,
+	).Scan(&out.GrantID, &out.GranteeUserID, &out.RevokedAt)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "P0002":
+			return RevokeResult{}, ErrGrantNotFound
+		case "55000":
+			return RevokeResult{}, ErrAlreadyRevoked
+		}
+	}
+	out.RevokedAt = out.RevokedAt.UTC()
+	return out, err
+}
+
+// GetInstances lists active instances of the user's variant, optionally including shared ones.
+func (s *Store) GetInstances(ctx context.Context, userID, variantID int, includeShared bool) ([]Instance, error) {
+	rows, err := s.pool.Query(ctx, `
+		select instance_id, user_id, variant_id, item_name, variant_name,
+		       match_score, store_mode::text, quantity, unit_weight_grams,
+		       total_grams, grams_consumed, grams_remaining,
+		       expiry_modifier, added_at, expires_at
+		from kitchen.usp_instance_get($1, $2, $3, $4::real)`,
+		userID, variantID, includeShared, minMatchScore)
+	if err != nil {
+		return nil, mapInstanceErr(err)
+	}
+	defer rows.Close()
+
+	out := []Instance{} // empty list, not nil, so JSON is [] and not null
+	for rows.Next() {
+		var in Instance
+		if err := rows.Scan(&in.InstanceID, &in.UserID, &in.VariantID,
+			&in.ItemName, &in.VariantName, &in.MatchScore, &in.StoreMode,
+			&in.Quantity, &in.UnitWeightGrams, &in.TotalGrams,
+			&in.GramsConsumed, &in.GramsRemaining, &in.ExpiryModifier,
+			&in.AddedAt, &in.ExpiresAt); err != nil {
+			return nil, mapInstanceErr(err)
+		}
+		in.AddedAt = in.AddedAt.UTC()
+		if in.ExpiresAt != nil {
+			t := in.ExpiresAt.UTC()
+			in.ExpiresAt = &t
+		}
+		out = append(out, in)
+	}
+	return out, mapInstanceErr(rows.Err())
+}
+
+func mapInstanceErr(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23502", "23514":
+			return ErrInvalidInput
+		case "P0002":
+			return ErrVariantNotFound
+		}
+	}
+	return err
 }

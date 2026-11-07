@@ -16,6 +16,8 @@ func NewRouter(cfg config.Config, dataStore *store.Store) http.Handler {
 	healthHandler := handlers.NewHealthHandler()
 	authController := controller.NewAuthController(cfg, dataStore)
 	itemController := controller.NewItemController(dataStore)
+	grantController := controller.NewGrantController(dataStore)
+	instanceController := controller.NewInstanceController(dataStore)
 
 	mux.Handle("/health", healthHandler)
 	mux.HandleFunc("/create", authController.Create)
@@ -43,6 +45,11 @@ func NewRouter(cfg config.Config, dataStore *store.Store) http.Handler {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
 	}))
+	mux.HandleFunc("/grants", authController.RequireAuth(grantController.Handle))
+	mux.HandleFunc("POST /grants/{id}/revoke", authController.RequireAuth(grantController.Revoke))
+	mux.HandleFunc("GET /variants/{id}/instances", authController.RequireAuth(instanceController.List))
+	mux.HandleFunc("POST /instances", authController.RequireAuth(instanceController.AddInstance))
+	mux.HandleFunc("POST /instances/use", authController.RequireAuth(instanceController.UseInstance))
 
 	return mux
 }

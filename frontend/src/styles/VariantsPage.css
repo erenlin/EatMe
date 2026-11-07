@@ -1,0 +1,78 @@
+.variants {
+  --mauve: #8a6a72;
+  --mauve-dark: #6f545b;
+  --blush: #f6e7e8;
+  --page: #fbf7f6;
+  --ink: #2a2426;
+  --muted: #7a6f72;
+  --line: #ddd2d3;
+  --error: #a3261c;
+
+  max-width: 26rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: var(--page);
+  color: var(--ink);
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  text-align: left;
+}
+
+@media (prefers-color-scheme: dark) {
+  .variants {
+    --mauve: #c49aa4;
+    --mauve-dark: #d9b3bc;
+    --blush: #2e2427;
+    --page: #181415;
+    --ink: #f1eaeb;
+    --muted: #b3a6a9;
+    --line: #3d3235;
+    --error: #ff8a80;
+  }
+}
+
+.variants h1 { font-size: 1.4rem; margin: 0.75rem 0 0; }
+.variants h2 { font-size: 1.1rem; margin: 2rem 0 0.5rem; }
+.variants-sub { color: var(--muted); margin: 0.25rem 0 1.25rem; }
+
+.variants input, .variants select {
+  font: inherit; padding: 0.6rem 0.75rem; border: 1.5px solid var(--line);
+  border-radius: 8px; background: transparent; color: var(--ink);
+}
+.variants button {
+  font: inherit; font-weight: 600; padding: 0.6rem 1rem; border: 0; border-radius: 8px;
+  background: var(--mauve); color: var(--page); cursor: pointer;
+}
+.variants button:hover:not(:disabled) { background: var(--mauve-dark); }
+.variants button:disabled { opacity: 0.6; cursor: progress; }
+.variants input:focus-visible, .variants select:focus-visible, .variants button:focus-visible {
+  outline: 3px solid var(--mauve); outline-offset: 2px;
+}
+
+/* "← Back to items" looks like a link, not a big button. */
+.variants .variants-back { background: transparent; color: var(--mauve); padding: 0; }
+.variants .variants-back:hover:not(:disabled) { background: transparent; text-decoration: underline; }
+
+.variants-search { display: flex; gap: 0.5rem; }
+.variants-search input { flex: 1; min-width: 0; }
+
+.variants-list { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: 0.5rem; }
+.variants-list li {
+  display: flex; flex-direction: column; gap: 0.2rem;
+  padding: 0.85rem 1rem; border: 1.5px solid var(--line); border-radius: 10px;
+  background: var(--blush);
+}
+.variants-list span { color: var(--muted); font-size: 0.85rem; }
+
+.variants-form { display: flex; flex-direction: column; }
+.variants-form label { font-weight: 600; font-size: 0.9rem; margin: 0.9rem 0 0.35rem; }
+.variants-form button { margin-top: 1.25rem; }
+
+.variants-empty, .variants-note { color: var(--muted); margin-top: 1rem; }
+.variants-error { color: var(--error); font-size: 0.9rem; margin: 0.75rem 0 0; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
