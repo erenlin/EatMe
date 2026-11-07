@@ -60,7 +60,6 @@ declare
 
 begin
     -- Step 01: Payload Validation
-
     if p_user_id is null then
         raise exception '% %: user id is required', action_name, tabled_name
             using errcode = 'not_null_violation', detail = 'user_id';
@@ -121,15 +120,17 @@ begin
     end if;
 
     -- Step 02: Check the item exists and belongs to the user
-    if not exists (select 1
-                   from
-                       items
-                   where
-                       items.id = p_item_id
-                     and
-                       items.user_id = p_user_id) then
-                           raise exception '% %: item not found', action_name, tabled_name
-                               using errcode = 'no_data_found', detail = 'item_id';
+    if not exists (
+        select
+            1
+        from
+           items
+        where
+           items.id = p_item_id
+         and
+           items.user_id = p_user_id) then
+               raise exception '% %: item not found', action_name, tabled_name
+                   using errcode = 'no_data_found', detail = 'item_id';
     end if;
 
     -- Step 03: Insert new variant record; the unique index rejects duplicates (any case)

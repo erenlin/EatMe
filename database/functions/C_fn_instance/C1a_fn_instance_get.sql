@@ -165,7 +165,7 @@ begin
 
                          cross join lateral (
                              select  -- Total used so far, by anyone, for any reason; 0 when nothing is recorded yet
-                                 coalesce(sum(consumption.grams), 0)::int  as u_grams
+                                 coalesce(sum(consumption.grams), 0)::int as u_grams
                              from
                                  item_consumption consumption
                              where
