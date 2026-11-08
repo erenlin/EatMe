@@ -1,0 +1,40 @@
+/* Tabs at the top of the app. */
+.app-nav {
+  --mauve: #8a6a72;
+  --blush: #f6e7e8;
+  --page: #fbf7f6;
+  --ink: #2a2426;
+  --line: #ddd2d3;
+
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem 0;
+  background: var(--page);
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-nav {
+    --mauve: #c49aa4;
+    --blush: #2e2427;
+    --page: #181415;
+    --ink: #f1eaeb;
+    --line: #3d3235;
+  }
+}
+
+.app-nav button {
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.app-nav button:hover { border-color: var(--mauve); }
+.app-nav button[aria-current="page"] { background: var(--mauve); border-color: var(--mauve); color: var(--page); }
+.app-nav button:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }

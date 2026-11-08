@@ -1,0 +1,38 @@
+/* Sharing page. */
+.sharing-intro { margin: -0.5rem 0 1.25rem; font-size: 0.9rem; }
+
+.sharing-heading { font-size: 1.05rem; margin: 1.75rem 0 0.25rem; }
+
+.sharing-success { color: var(--mauve); font-size: 0.9rem; font-weight: 600; }
+
+/* One person you share with */
+.sharing-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--blush);
+}
+.sharing-card > div { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.sharing-card span { color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
+
+/* Shares that were stopped are faded out */
+.sharing-card.is-stopped { background: transparent; opacity: 0.7; }
+
+.sharing-revoke {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.45rem 0.75rem;
+  border: 1.5px solid var(--mauve);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mauve);
+  cursor: pointer;
+}
+.sharing-revoke:hover:not(:disabled) { background: var(--mauve); color: var(--page); }
+.sharing-revoke:disabled { opacity: 0.6; cursor: progress; }
