@@ -1,0 +1,54 @@
+/* Uses the color variables from the page it sits in, with fallbacks. */
+.fridge {
+  margin: 0.75rem 0 0.5rem;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid var(--line, #ddd2d3);
+  border-radius: 10px;
+  background: var(--page, #fbf7f6);
+  text-align: left;
+}
+
+.fridge-title { font-size: 0.95rem; margin: 0 0 0.6rem; }
+.fridge-add label { display: block; font-size: 0.8rem; margin-bottom: 0.3rem; }
+
+.fridge-row { display: flex; gap: 0.5rem; }
+.fridge-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 0.5rem 0.6rem;
+  border: 1.5px solid var(--line, #ddd2d3);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+}
+.fridge-row button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.5rem 0.9rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--mauve, #8a6a72);
+  color: var(--page, #fbf7f6);
+  cursor: pointer;
+}
+.fridge-row button:disabled { opacity: 0.6; cursor: progress; }
+
+.fridge-list { list-style: none; padding: 0; margin: 0.85rem 0 0; display: grid; gap: 0.6rem; }
+.fridge-item {
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  background: var(--blush, #f6e7e8);
+  display: grid;
+  gap: 0.5rem;
+}
+.fridge-info { display: flex; flex-direction: column; gap: 0.15rem; }
+.fridge-info span { font-size: 0.85rem; color: var(--muted, #7a6f72); }
+
+.fridge-error { color: var(--error, #a3261c); font-size: 0.85rem; }
+.fridge-muted { color: var(--muted, #7a6f72); font-size: 0.85rem; margin: 0.75rem 0 0; }
+
+.fridge-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}

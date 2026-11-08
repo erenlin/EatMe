@@ -11,6 +11,7 @@ import {
   type Variant,
 } from "../services/variants";
 import "../styles/VariantsPage.css";
+import FridgeSection from "../components/FridgeSection";
 
 type Props = {
   itemId: number;
@@ -52,6 +53,7 @@ export default function VariantsPage({ itemId, itemName, onBack }: Props) {
   const [store, setStore] = useState<StoreMode>("room");
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [openVariantId, setOpenVariantId] = useState<number | null>(null);
 
   // Asks the backnd for the variants and puts them on screen.
   function loadVariants(searchText: string) {
@@ -160,12 +162,20 @@ export default function VariantsPage({ itemId, itemName, onBack }: Props) {
         <ul className="variants-list">
           {variants.map((v) => (
             <li key={v.variant_id}>
-              <strong>{v.variant_name}</strong>
-              <span>
-                {v.typical_weight_grams} g each · {v.serving_grams} g serving ·{" "}
-                {v.default_store_mode}
-              </span>
-            </li>
+                <button
+                  type="button"
+                  className="variants-toggle"
+                  onClick={() => setOpenVariantId(openVariantId === v.variant_id ? null : v.variant_id)}
+                >
+                  <strong>{v.variant_name}</strong>
+                  <span>
+                    {v.typical_weight_grams} g each · {v.serving_grams} g serving · {v.default_store_mode}
+                  </span>
+                </button>
+                {openVariantId === v.variant_id && (
+                  <FridgeSection variantId={v.variant_id} servingGrams={v.serving_grams} />
+                )}
+              </li>
           ))}
         </ul>
       )}
