@@ -1,6 +1,11 @@
 package config
 
-import "os"
+import (
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
+)
 
 // Config contains the basic application configuration.
 type Config struct {
@@ -17,12 +22,23 @@ func getenv(key, def string) string {
 	return def
 }
 
-// Load returns configuration values from environment variables.
+// Load reads .env (if present), then returns configuration from the environment.
+// Variables already set in the environment take precedence over .env.
 func Load() Config {
-	return Config{
+	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+		log.Printf("warning: could not load .env: %v", err)
+	}
+
+	cfg := Config{
 		Port:        getenv("PORT", "8080"),
 		Environment: getenv("APP_ENV", "development"),
 		JWTSecret:   getenv("JWT_SECRET", "dev-secret-change-me"),
-		DatabaseURL: getenv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/eatme?sslmode=disable"),
+		DatabaseURL: os.Getenv("DATABASE_URL"),
 	}
+
+	if cfg.DatabaseURL == "" {
+		log.Fatal("DATABASE_URL is not set — copy .env.example to .env and fill it in")
+	}
+
+	return cfg
 }
