@@ -54,6 +54,34 @@ type Instance struct {
 	ExpiresAt       *time.Time `json:"expires_at"` // null if no expiry
 }
 
+// ItemVariant represents a variant returned by the database.
+type ItemVariant struct {
+	VariantID          int       `json:"variant_id"`
+	VariantName        string    `json:"variant_name"`
+	TypicalWeightGrams int       `json:"typical_weight_grams"`
+	ServingGrams       int       `json:"serving_grams"`
+	CountingMethod     string    `json:"counting_method"`
+	DefaultStoreMode   string    `json:"default_store_mode"`
+	IconPNG            []byte    `json:"icon_png"`
+	CreatedAt          time.Time `json:"created_at"`
+	OwnerUserID        int       `json:"owner_user_id"`
+}
+
+// Recipe is one row from usp_recipe_get.
+type Recipe struct {
+	RecipeID        int       `json:"recipe_id"`
+	UserID          int       `json:"user_id"`
+	OwnerName       string    `json:"owner_name"`
+	IsOwn           bool      `json:"is_own"`
+	RecipeName      string    `json:"recipe_name"`
+	Servings        int       `json:"servings"`
+	Instructions    *string   `json:"instructions"`
+	IngredientCount int       `json:"ingredient_count"`
+	CoverageScore   *float32  `json:"coverage_score"`
+	CreatedAt       time.Time `json:"created_at"`
+	TotalCount      int       `json:"total_count"`
+}
+
 var (
 	ErrUserExists      = errors.New("user already exists")
 	ErrUserNotFound    = errors.New("user not found")
@@ -64,6 +92,8 @@ var (
 	ErrAlreadyRevoked  = errors.New("grant already revoked")
 	ErrInvalidInput    = errors.New("invalid input")
 	ErrVariantNotFound = errors.New("variant not found")
+	ErrSessionUserGone = errors.New("session user no longer exists")
+	ErrRecipeExists    = errors.New("recipe already exists")
 )
 
 var createUserSQL string
@@ -155,19 +185,6 @@ func (s *Store) LookupItems(ctx context.Context, userID int, query string, share
 	}
 
 	return items, nil
-}
-
-// ItemVariant represents a variant returned by the database.
-type ItemVariant struct {
-	VariantID          int       `json:"variant_id"`
-	VariantName        string    `json:"variant_name"`
-	TypicalWeightGrams int       `json:"typical_weight_grams"`
-	ServingGrams       int       `json:"serving_grams"`
-	CountingMethod     string    `json:"counting_method"`
-	DefaultStoreMode   string    `json:"default_store_mode"`
-	IconPNG            []byte    `json:"icon_png"`
-	CreatedAt          time.Time `json:"created_at"`
-	OwnerUserID        int       `json:"owner_user_id"`
 }
 
 // LookupVariants searches variants for a particular item.
@@ -428,6 +445,76 @@ func mapInstanceErr(err error) error {
 			return ErrInvalidInput
 		case "P0002":
 			return ErrVariantNotFound
+		}
+	}
+	return err
+}
+
+// GetRecipes returns one page (50 rows) of recipes, in the order the DB returns them.
+func (s *Store) GetRecipes(ctx context.Context, userID int, includeShared, shared, weighted bool, page int) ([]Recipe, error) {
+	rows, err := s.pool.Query(ctx, `
+		select recipe_id, user_id, owner_name, is_own, recipe_name, servings,
+		       instructions, ingredient_count, coverage_score, created_at, total_count
+		from kitchen.usp_recipe_get(
+			$1,
+			p_include_shared := $2,
+			p_shared := $3,
+			p_weighted := $4,
+			p_page := $5)`,
+		userID, includeShared, shared, weighted, page)
+	if err != nil {
+		return nil, mapRecipeErr(err)
+	}
+	defer rows.Close()
+
+	out := []Recipe{} // empty list, not nil, so JSON is [] and not null
+	for rows.Next() {
+		var r Recipe
+		if err := rows.Scan(&r.RecipeID, &r.UserID, &r.OwnerName, &r.IsOwn,
+			&r.RecipeName, &r.Servings, &r.Instructions, &r.IngredientCount,
+			&r.CoverageScore, &r.CreatedAt, &r.TotalCount); err != nil {
+			return nil, mapRecipeErr(err)
+		}
+		r.CreatedAt = r.CreatedAt.UTC()
+		out = append(out, r)
+	}
+	return out, mapRecipeErr(rows.Err())
+}
+
+// AddRecipe creates a recipe header for the user and returns the new recipe id.
+func (s *Store) AddRecipe(ctx context.Context, userID int, name string, servings int, instructions *string) (int, error) {
+	var id int
+	err := s.pool.QueryRow(ctx,
+		`select kitchen.usp_recipe_add(
+			$1,
+			p_recipe_name := $2,
+			p_servings := $3,
+			p_instructions := $4)`,
+		userID, name, servings, instructions,
+	).Scan(&id)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23505": // map by code, not detail
+			return 0, ErrRecipeExists
+		case "23502", "23514", "22P02", "22007":
+			return 0, ErrInvalidInput
+		case "P0002":
+			return 0, ErrSessionUserGone
+		}
+	}
+	return id, err
+}
+
+func mapRecipeErr(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23502", "23514", "22P02", "22003":
+			return ErrInvalidInput
+		case "P0002":
+			return ErrSessionUserGone // the session's user no longer exists
 		}
 	}
 	return err
