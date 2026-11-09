@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -94,6 +95,9 @@ var (
 	ErrVariantNotFound = errors.New("variant not found")
 	ErrSessionUserGone = errors.New("session user no longer exists")
 	ErrRecipeExists    = errors.New("recipe already exists")
+	ErrRecipeNotFound  = errors.New("recipe not found")
+	ErrAlreadyInRecipe = errors.New("variant already in recipe")
+	ErrNoFreePosition  = errors.New("recipe has no free positions")
 )
 
 var createUserSQL string
@@ -287,6 +291,20 @@ type CreatedVariant struct {
 	CountingMethod     string    `json:"counting_method"`
 	DefaultStoreMode   string    `json:"default_store_mode"`
 	CreatedAt          time.Time `json:"created_at"`
+}
+
+// Ingredient is one row from usp_recipe_ingredient_get.
+type Ingredient struct {
+	IngredientID       int    `json:"ingredient_id"`
+	RecipeID           int    `json:"recipe_id"`
+	VariantID          int    `json:"variant_id"` // a variant of the recipe's owner
+	ItemName           string `json:"item_name"`
+	VariantName        string `json:"variant_name"`
+	Grams              int    `json:"grams"` // amount for the recipe's servings
+	Position           int    `json:"ingredient_position"`
+	CountingMethod     string `json:"counting_method"` // divisible | numerable
+	TypicalWeightGrams int    `json:"typical_weight_grams"`
+	ServingGrams       int    `json:"serving_grams"`
 }
 
 // AddVariant creates a variant using the existing PostgreSQL function.
@@ -518,4 +536,71 @@ func mapRecipeErr(err error) error {
 		}
 	}
 	return err
+}
+
+// GetIngredients lists a recipe's ingredients in display order, as returned by the DB.
+func (s *Store) GetIngredients(ctx context.Context, userID, recipeID int) ([]Ingredient, error) {
+	rows, err := s.pool.Query(ctx, `
+		select ingredient_id, recipe_id, variant_id, item_name, variant_name,
+		       grams, ingredient_position, counting_method::text,
+		       typical_weight_grams, serving_grams
+		from kitchen.usp_recipe_ingredient_get($1, $2)`,
+		userID, recipeID)
+	if err != nil {
+		return nil, mapIngredientErr(err)
+	}
+	defer rows.Close()
+
+	out := []Ingredient{} // empty list, not nil, so JSON is [] and not null
+	for rows.Next() {
+		var in Ingredient
+		if err := rows.Scan(&in.IngredientID, &in.RecipeID, &in.VariantID,
+			&in.ItemName, &in.VariantName, &in.Grams, &in.Position,
+			&in.CountingMethod, &in.TypicalWeightGrams, &in.ServingGrams); err != nil {
+			return nil, mapIngredientErr(err)
+		}
+		out = append(out, in)
+	}
+	return out, mapIngredientErr(rows.Err())
+}
+
+func mapIngredientErr(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23502", "22P02", "22003":
+			return ErrInvalidInput
+		case "P0002":
+			return ErrRecipeNotFound
+		}
+	}
+	return err
+}
+
+// AddIngredient adds one of the user's variants to one of their recipes and returns the new ingredient id.
+func (s *Store) AddIngredient(ctx context.Context, userID, recipeID, variantID, grams int) (int, error) {
+	var id int
+	err := s.pool.QueryRow(ctx,
+		`select kitchen.usp_recipe_ingredient_add($1, $2, $3, $4)`,
+		userID, recipeID, variantID, grams,
+	).Scan(&id)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23502", "23514", "22P02", "22003":
+			return 0, ErrInvalidInput
+		case "23505":
+			return 0, ErrAlreadyInRecipe
+		case "54000":
+			return 0, ErrNoFreePosition
+		case "P0002":
+			// detail names the missing thing: "recipe_id" or "variant_id"
+			if strings.Contains(pgErr.Detail, "variant_id") {
+				return 0, ErrVariantNotFound
+			}
+			return 0, ErrRecipeNotFound
+		}
+	}
+	return id, err
 }
