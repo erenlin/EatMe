@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -95,6 +96,8 @@ var (
 	ErrSessionUserGone = errors.New("session user no longer exists")
 	ErrRecipeExists    = errors.New("recipe already exists")
 	ErrRecipeNotFound  = errors.New("recipe not found")
+	ErrAlreadyInRecipe = errors.New("variant already in recipe")
+	ErrNoFreePosition  = errors.New("recipe has no free positions")
 )
 
 var createUserSQL string
@@ -572,4 +575,32 @@ func mapIngredientErr(err error) error {
 		}
 	}
 	return err
+}
+
+// AddIngredient adds one of the user's variants to one of their recipes and returns the new ingredient id.
+func (s *Store) AddIngredient(ctx context.Context, userID, recipeID, variantID, grams int) (int, error) {
+	var id int
+	err := s.pool.QueryRow(ctx,
+		`select kitchen.usp_recipe_ingredient_add($1, $2, $3, $4)`,
+		userID, recipeID, variantID, grams,
+	).Scan(&id)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23502", "23514", "22P02", "22003":
+			return 0, ErrInvalidInput
+		case "23505":
+			return 0, ErrAlreadyInRecipe
+		case "54000":
+			return 0, ErrNoFreePosition
+		case "P0002":
+			// detail names the missing thing: "recipe_id" or "variant_id"
+			if strings.Contains(pgErr.Detail, "variant_id") {
+				return 0, ErrVariantNotFound
+			}
+			return 0, ErrRecipeNotFound
+		}
+	}
+	return id, err
 }
