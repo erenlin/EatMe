@@ -119,3 +119,35 @@ func (c *RecipeController) Add(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(map[string]int{"recipe_id": id})
 }
+
+// Ingredients lists a recipe's ingredients. The recipe must be the user's own, or a grantor's.
+func (c *RecipeController) Ingredients(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(userIDKey).(int)
+	if !ok || userID == 0 {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	recipeID, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || recipeID <= 0 {
+		http.Error(w, "invalid recipe id", http.StatusBadRequest)
+		return
+	}
+
+	ingredients, err := c.store.GetIngredients(r.Context(), userID, recipeID)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrInvalidInput):
+			http.Error(w, "invalid input", http.StatusBadRequest)
+		case errors.Is(err, store.ErrRecipeNotFound):
+			http.Error(w, "recipe not found", http.StatusNotFound) // same for missing and inaccessible
+		default:
+			log.Printf("get ingredients failed: %v", err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(ingredients)
+}
