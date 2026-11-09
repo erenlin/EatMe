@@ -76,3 +76,29 @@
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+
+/* Variant rows: the card is the <li>; the button inside is invisible */
+.variants .variants-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.25rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink, #2a2426);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.variants .variants-toggle:hover:not(:disabled) { background: transparent; }
+.variants .variants-toggle:hover strong { text-decoration: underline; }
+.variants .variants-toggle span { color: var(--muted, #7a6f72); font-size: 0.85rem; }
+
+/* "+ Add a variant": hide the extra ▶ arrow, since the + already says "open me" */
+.variants-add summary { list-style: none; }
+.variants-add summary::-webkit-details-marker { display: none; }

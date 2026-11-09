@@ -19,6 +19,7 @@ func NewRouter(cfg config.Config, dataStore *store.Store) http.Handler {
 	grantController := controller.NewGrantController(dataStore)
 	instanceController := controller.NewInstanceController(dataStore)
 	expiryController := controller.NewExpiryController(dataStore)
+	recipeController := controller.NewRecipeController(dataStore)
 
 	mux.Handle("/health", healthHandler)
 	mux.HandleFunc("/create", authController.Create)
@@ -54,6 +55,10 @@ func NewRouter(cfg config.Config, dataStore *store.Store) http.Handler {
 	mux.HandleFunc("GET /variants/{id}/expiry", authController.RequireAuth(expiryController.Get))
 	mux.HandleFunc("POST /variants/{id}/expiry", authController.RequireAuth(expiryController.Set))
 	mux.HandleFunc("DELETE /variants/{id}/expiry", authController.RequireAuth(expiryController.Delete))
+	mux.HandleFunc("GET /recipes", authController.RequireAuth(recipeController.List))
+	mux.HandleFunc("POST /recipes", authController.RequireAuth(recipeController.Add))
+	mux.HandleFunc("GET /recipes/{id}/ingredients", authController.RequireAuth(recipeController.Ingredients))
+	mux.HandleFunc("POST /recipes/{id}/ingredients", authController.RequireAuth(recipeController.AddIngredient))
 
 	return mux
 }
