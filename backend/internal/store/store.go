@@ -93,6 +93,7 @@ var (
 	ErrInvalidInput    = errors.New("invalid input")
 	ErrVariantNotFound = errors.New("variant not found")
 	ErrSessionUserGone = errors.New("session user no longer exists")
+	ErrRecipeExists    = errors.New("recipe already exists")
 )
 
 var createUserSQL string
@@ -478,6 +479,32 @@ func (s *Store) GetRecipes(ctx context.Context, userID int, includeShared, share
 		out = append(out, r)
 	}
 	return out, mapRecipeErr(rows.Err())
+}
+
+// AddRecipe creates a recipe header for the user and returns the new recipe id.
+func (s *Store) AddRecipe(ctx context.Context, userID int, name string, servings int, instructions *string) (int, error) {
+	var id int
+	err := s.pool.QueryRow(ctx,
+		`select kitchen.usp_recipe_add(
+			$1,
+			p_recipe_name := $2,
+			p_servings := $3,
+			p_instructions := $4)`,
+		userID, name, servings, instructions,
+	).Scan(&id)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23505": // map by code, not detail
+			return 0, ErrRecipeExists
+		case "23502", "23514", "22P02", "22007":
+			return 0, ErrInvalidInput
+		case "P0002":
+			return 0, ErrSessionUserGone
+		}
+	}
+	return id, err
 }
 
 func mapRecipeErr(err error) error {

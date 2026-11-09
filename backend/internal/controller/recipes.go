@@ -6,9 +6,16 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"eatme/internal/store"
 )
+
+type AddRecipeRequest struct {
+	RecipeName   string  `json:"recipe_name"`
+	Servings     int     `json:"servings"`
+	Instructions *string `json:"instructions"` // optional
+}
 
 type RecipeController struct {
 	store *store.Store
@@ -71,4 +78,44 @@ func (c *RecipeController) List(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(recipes)
+}
+
+// Add creates a recipe header for the logged-in user. The user id comes from the token.
+func (c *RecipeController) Add(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(userIDKey).(int)
+	if !ok || userID == 0 {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req AddRecipeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	name := strings.TrimSpace(req.RecipeName)
+	if name == "" || req.Servings < 1 || req.Servings > 3650 {
+		http.Error(w, "recipe_name is required and servings must be 1 to 3650", http.StatusBadRequest)
+		return
+	}
+
+	id, err := c.store.AddRecipe(r.Context(), userID, name, req.Servings, req.Instructions)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrRecipeExists):
+			http.Error(w, "you already have a recipe with this name", http.StatusConflict)
+		case errors.Is(err, store.ErrInvalidInput):
+			http.Error(w, "invalid recipe data", http.StatusBadRequest)
+		case errors.Is(err, store.ErrSessionUserGone):
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+		default:
+			log.Printf("add recipe failed: %v", err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(map[string]int{"recipe_id": id})
 }
