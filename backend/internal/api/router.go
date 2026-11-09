@@ -18,6 +18,7 @@ func NewRouter(cfg config.Config, dataStore *store.Store) http.Handler {
 	itemController := controller.NewItemController(dataStore)
 	grantController := controller.NewGrantController(dataStore)
 	instanceController := controller.NewInstanceController(dataStore)
+	recipeController := controller.NewRecipeController(dataStore)
 
 	mux.Handle("/health", healthHandler)
 	mux.HandleFunc("/create", authController.Create)
@@ -50,6 +51,7 @@ func NewRouter(cfg config.Config, dataStore *store.Store) http.Handler {
 	mux.HandleFunc("GET /variants/{id}/instances", authController.RequireAuth(instanceController.List))
 	mux.HandleFunc("POST /instances", authController.RequireAuth(instanceController.AddInstance))
 	mux.HandleFunc("POST /instances/use", authController.RequireAuth(instanceController.UseInstance))
+	mux.HandleFunc("GET /recipes", authController.RequireAuth(recipeController.List))
 
 	return mux
 }
