@@ -1,7 +1,9 @@
 // Shows what's in the fridge for one variant (C1a), lets you add more (C1b),
-// and lets you use some up (C1c). Used inside VariantsPage:
+// and lets you use some up (C1c). Tap a row's info to edit it on its own page.
+// Used inside VariantDetailPage:
 //   <FridgeSection variantId={v.variant_id} servingGrams={v.serving_grams} />
 import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router";
 import { ApiError } from "../services/client";
 import { addInstance, listInstances, consumeInstance, type Instance } from "../services/instances";
 import "../styles/FridgeSection.css";
@@ -170,7 +172,7 @@ function InstanceRow({ instance, servingGrams, onUsed, onError }: RowProps) {
 
   return (
     <li className="fridge-item">
-      <div className="fridge-info">
+      <Link className="fridge-info" to={`/groceries/${instance.instance_id}`}>
         <strong>
           {instance.quantity} × {instance.store_mode}
         </strong>
@@ -178,7 +180,7 @@ function InstanceRow({ instance, servingGrams, onUsed, onError }: RowProps) {
           {instance.grams_remaining} g left ·{" "}
           {instance.expires_at ? `expires ${formatDate(instance.expires_at)}` : "no expiry set"}
         </span>
-      </div>
+      </Link>
       <form className="fridge-row" onSubmit={handleUse}>
         <label htmlFor={`use-${instance.instance_id}`} className="fridge-hidden">
           Grams used

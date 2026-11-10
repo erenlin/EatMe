@@ -59,9 +59,10 @@ function byExpiry(a: Instance, b: Instance): number {
   return new Date(a.expires_at).getTime() - new Date(b.expires_at).getTime();
 }
 
-// One grocery for the My Groceries page: an instance plus its variant's serving size,
-// so the "Use one" button knows how many grams one serving is.
-export type Grocery = Instance & { serving_grams: number };
+// One grocery for the My Groceries page: an instance plus its variant's serving size
+// (so "Use one" knows how many grams one serving is) and the ids it belongs to
+// (so the details page can link back to the dictionary).
+export type Grocery = Instance & { serving_grams: number; item_id: number; variant_id: number };
 
 // Every grocery the user has, in one list.
 // WORKAROUND: the backend has no "list all instances" endpoint yet, so we ask for
@@ -72,7 +73,10 @@ export async function listAllInstances(): Promise<Grocery[]> {
 
   // All items' variants at once.
   const variantLists = await Promise.all(
-    items.map((item) => listVariants(item.item_id, "")),
+    items.map(async (item) => {
+      const rows = await listVariants(item.item_id, "");
+      return rows.map((v) => ({ ...v, item_id: item.item_id }));
+    }),
   );
   const variants = variantLists.flat();
 
@@ -80,9 +84,21 @@ export async function listAllInstances(): Promise<Grocery[]> {
   const groceryLists = await Promise.all(
     variants.map(async (v) => {
       const rows = (await listInstances(v.variant_id)) ?? [];
-      return rows.map((row) => ({ ...row, serving_grams: v.serving_grams }));
+      return rows.map((row) => ({
+        ...row,
+        serving_grams: v.serving_grams,
+        item_id: v.item_id,
+        variant_id: v.variant_id,
+      }));
     }),
   );
 
   return groceryLists.flat().sort(byExpiry);
+}
+
+// One grocery by its instance id, or null if it's gone (all used up).
+// WORKAROUND: no GET /instances/{id} yet, so this loads the whole list and picks one.
+export async function getGrocery(instanceId: number): Promise<Grocery | null> {
+  const all = await listAllInstances();
+  return all.find((g) => g.instance_id === instanceId) ?? null;
 }

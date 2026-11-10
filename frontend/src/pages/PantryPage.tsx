@@ -1,8 +1,10 @@
+// Food dictionary (/dictionary): every item you've saved. Tap one to open its
+// own page with its variants (/dictionary/:itemId).
 import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router";
 import { ApiError } from "../services/client";
 import { lookupItems, createItem, type Item } from "../services/items";
 import "../styles/PantryPage.css";
-import VariantsPage from "./VariantsPage";
 
 const MESSAGES: Record<number, string> = {
   400: "Please enter an item name.",
@@ -19,7 +21,6 @@ function messageFor(err: unknown): string {
 export default function PantryPage() {
   // ---- Sticky notes (what the page remembers) ----
   const [items, setItems] = useState<Item[]>([]);
-  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [search, setSearch] = useState(""); // text in the search bar
   const [activeSearch, setActiveSearch] = useState(""); // the search that was last run
   const [addItemWord, setAddItemWord] = useState(""); // text in the add box
@@ -78,15 +79,14 @@ export default function PantryPage() {
   // ---- What you see ----
   return (
     <main className="pantry">
-      <h1 className="pantry-title">My Groceries</h1>
+      <h1 className="pantry-title">Dictionary</h1>
 
       <form className="pantry-row" onSubmit={handleSearch} role="search">
-        <label htmlFor="search" className="visually-hidden">Search groceries</label>
+        <label htmlFor="search" className="visually-hidden">Search the dictionary</label>
         <input
-          onFocus={() => setSelectedItem(null)}
           id="search"
           type="search"
-          placeholder="Search groceries"
+          placeholder="Search the dictionary"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -124,8 +124,8 @@ export default function PantryPage() {
             </>
           ) : (
             <>
-              <h2>Your fridge is empty!</h2>
-              <p>Add your first grocery and we'll remind you before it goes bad.</p>
+              <h2>Your dictionary is empty!</h2>
+              <p>Add a food above, like Apple, then give it variants.</p>
             </>
           )}
         </div>
@@ -133,27 +133,17 @@ export default function PantryPage() {
         <ul className="pantry-list">
           {items.map((item) => (
             <li key={item.item_id} className="pantry-item">
-  <button
-    type="button"
-    className={
-      item.item_id === selectedItem?.item_id
-        ? "pantry-item-button is-selected"
-        : "pantry-item-button"
-    }
-    onClick={() => setSelectedItem(item)}
-  >
-    {item.item_name}
-  </button>
-</li>
+              <Link
+                className="pantry-item-button"
+                to={`/dictionary/${item.item_id}`}
+                state={{ itemName: item.item_name }}
+              >
+                {item.item_name}
+              </Link>
+            </li>
           ))}
         </ul>
       )}
-      {selectedItem && (
-  <VariantsPage
-    itemId={selectedItem.item_id}
-    itemName={selectedItem.item_name}
-  />
-)}
     </main>
   );
 }

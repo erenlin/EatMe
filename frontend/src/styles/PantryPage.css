@@ -99,28 +99,15 @@
 }
 .pantry-item-button:hover { border-color: var(--mauve); }
 
-/* The item that's currently open */
-.pantry-item-button.is-selected {
-  background: var(--mauve);
-  border-color: var(--mauve);
-  color: var(--page);
-  font-weight: 600;
-}
+/* Items are links to their own page: keep the text plain, show a > on the right. */
+a.pantry-item-button { text-decoration: none; display: flex; justify-content: space-between; }
+a.pantry-item-button::after { content: "›"; color: var(--muted); }
+.pantry-item-button:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
 
 /* ---------- Empty state ---------- */
 .pantry-empty { text-align: center; margin-top: 3rem; }
 .pantry-empty h2 { color: var(--mauve); font-size: 1.1rem; }
 .pantry-empty p { color: var(--muted); }
-
-/* ---------- Variants section under the list ---------- */
-.pantry .variants {
-  min-height: 0;
-  max-width: none;
-  margin: 1.75rem 0 0;
-  padding: 1.5rem 0 0;
-  border-top: 1.5px solid var(--line);
-  background: transparent;
-}
 
 /* Hidden labels for screen readers */
 .visually-hidden {

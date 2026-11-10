@@ -1,6 +1,9 @@
-// Shows one item's variants (B1b) and lets the user add a new one (B2b).
-//   <VariantsPage itemId={item.item_id} itemName={item.item_name} onBack={...} />
+// One dictionary item (/dictionary/:itemId): its variants (B1b) and a form to add one (B2b).
+// Tap a variant to open its own page with what's in your fridge.
+// The dictionary passes the item's name in router state; if you land here from
+// the address bar, it looks the name up instead.
 import { useEffect, useState, type FormEvent } from "react";
+import { Link, useLocation, useParams } from "react-router";
 import { ApiError } from "../services/client";
 import {
   addVariant,
@@ -10,14 +13,8 @@ import {
   type StoreMode,
   type Variant,
 } from "../services/variants";
+import { lookupItems } from "../services/items";
 import "../styles/VariantsPage.css";
-import FridgeSection from "../components/FridgeSection";
-
-type Props = {
-  itemId: number;
-  itemName: string;
-  onBack?: () => void;
-};
 
 // Turns a status code from the backend into a sentence a user can understand.
 function friendlyError(err: unknown): string {
@@ -38,7 +35,11 @@ function friendlyError(err: unknown): string {
   }
 }
 
-export default function VariantsPage({ itemId, itemName, onBack }: Props) {
+export default function VariantsPage() {
+  const itemId = Number(useParams().itemId);
+  const passedName = (useLocation().state as { itemName?: string } | null)?.itemName ?? "";
+  const [itemName, setItemName] = useState(passedName);
+
   // ---- The list (B1b) ----
   const [variants, setVariants] = useState<Variant[]>([]);
   const [query, setQuery] = useState("");
@@ -53,7 +54,6 @@ export default function VariantsPage({ itemId, itemName, onBack }: Props) {
   const [store, setStore] = useState<StoreMode>("room");
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [openVariantId, setOpenVariantId] = useState<number | null>(null);
 
   // Asks the backnd for the variants and puts them on screen.
   function loadVariants(searchText: string) {
@@ -64,6 +64,17 @@ export default function VariantsPage({ itemId, itemName, onBack }: Props) {
       })
       .catch((err: unknown) => setListError(friendlyError(err)));
   }
+
+  // No name came with the click (e.g. a refresh): find it in the user's items.
+  useEffect(() => {
+    if (passedName) return;
+    lookupItems("")
+      .then((items) => {
+        const found = (items ?? []).find((i) => i.item_id === itemId);
+        if (found) setItemName(found.item_name);
+      })
+      .catch(() => {}); // the variants request below shows any error
+  }, [itemId, passedName]);
 
   // Load the full list when the page opens, or when a different item is opened.
   useEffect(() => {
@@ -127,13 +138,11 @@ export default function VariantsPage({ itemId, itemName, onBack }: Props) {
 
   return (
     <main className="variants">
-      {onBack && (
-        <button type="button" className="variants-back" onClick={onBack}>
-          ← Back to items
-        </button>
-      )}
-      <h1>{itemName}</h1>
-      <p className="variants-sub">Kinds of {itemName} in your pantry</p>
+      <Link to="/dictionary" className="variants-back">
+        ← Dictionary
+      </Link>
+      <h1>{itemName || "Item"}</h1>
+      <p className="variants-sub">Kinds of {itemName || "this item"} in your dictionary</p>
 
       {/* B1b: search and list */}
       <form className="variants-search" onSubmit={handleSearch}>
@@ -162,20 +171,17 @@ export default function VariantsPage({ itemId, itemName, onBack }: Props) {
         <ul className="variants-list">
           {variants.map((v) => (
             <li key={v.variant_id}>
-                <button
-                  type="button"
-                  className="variants-toggle"
-                  onClick={() => setOpenVariantId(openVariantId === v.variant_id ? null : v.variant_id)}
-                >
-                  <strong>{v.variant_name}</strong>
-                  <span>
-                    {v.typical_weight_grams} g each · {v.serving_grams} g serving · {v.default_store_mode}
-                  </span>
-                </button>
-                {openVariantId === v.variant_id && (
-                  <FridgeSection variantId={v.variant_id} servingGrams={v.serving_grams} />
-                )}
-              </li>
+              <Link
+                className="variants-toggle"
+                to={`/dictionary/${itemId}/variants/${v.variant_id}`}
+                state={{ variant: v, itemName }}
+              >
+                <strong>{v.variant_name}</strong>
+                <span>
+                  {v.typical_weight_grams} g each · {v.serving_grams} g serving · {v.default_store_mode}
+                </span>
+              </Link>
+            </li>
           ))}
         </ul>
       )}

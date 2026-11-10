@@ -1,8 +1,9 @@
 // My Groceries: everything the user has, soonest-expiring first, with freshness bars.
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { ApiError } from "../services/client";
 import { consumeInstance, listAllInstances, type Grocery } from "../services/instances";
-import { daysLeft, freshnessPercent } from "../utils/freshness";
+import { barTone, daysLeft, freshnessPercent } from "../utils/freshness";
 import "../styles/InventoryPage.css";
 
 // Turns any error into a sentence we can show on screen.
@@ -89,10 +90,9 @@ export default function InventoryPage() {
     <main className="inventory">
       <header className="inventory-header">
         <h1 className="inventory-title">My Groceries</h1>
-        {/* TODO: swap for the router's <Link to="/add"> once routing lands. */}
-        <a className="inventory-add" href="/add">
+        <Link className="inventory-add" to="/add">
           + Add
-        </a>
+        </Link>
       </header>
 
       <label htmlFor="inventory-search" className="inventory-hidden">
@@ -171,6 +171,13 @@ function GroceryCard({ grocery, now, busy, onUseOne, onDelete }: CardProps) {
 
   return (
     <li className="inventory-card">
+      {/* Tapping the name, days, or bar opens the details page. The grocery rides
+          along in router state so that page can show it right away. */}
+      <Link
+        className="inventory-card-link"
+        to={`/groceries/${grocery.instance_id}`}
+        state={{ grocery }}
+      >
       <div className="inventory-card-top">
         <div>
           <strong className="inventory-name">
@@ -191,11 +198,12 @@ function GroceryCard({ grocery, now, busy, onUseOne, onDelete }: CardProps) {
           aria-valuenow={Math.round(percent)}
         >
           <div
-            className={urgent ? "inventory-bar-fill is-urgent" : "inventory-bar-fill"}
+            className={`inventory-bar-fill${barTone(urgent, percent)}`}
             style={{ width: `${percent}%` }}
           />
         </div>
       )}
+      </Link>
 
       <div className="inventory-actions">
         <button type="button" onClick={onUseOne} disabled={busy}>
