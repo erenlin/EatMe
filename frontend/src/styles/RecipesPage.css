@@ -1,0 +1,119 @@
+/* Recipes for You. Same colors and font as My Groceries until theme.css lands. */
+.recipes {
+  --mauve: #8a6a72;
+  --mauve-dark: #6f545b;
+  --blush: #f6e7e8;
+  --page: #fbf7f6;
+  --ink: #2a2426;
+  --muted: #7a6f72;
+  --line: #ddd2d3;
+  --error: #a3261c;
+
+  width: 100%;
+  max-width: 26rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: var(--page);
+  color: var(--ink);
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  text-align: left;
+}
+
+@media (prefers-color-scheme: dark) {
+  .recipes {
+    --mauve: #c49aa4;
+    --mauve-dark: #d9b3bc;
+    --blush: #2e2427;
+    --page: #181415;
+    --ink: #f1eaeb;
+    --muted: #b3a6a9;
+    --line: #3d3235;
+    --error: #ff8a80;
+  }
+}
+
+.recipes-title { font-family: inherit; font-size: 1.4rem; letter-spacing: normal; margin: 0 0 1.25rem; }
+
+/* ---------- Search and add form ---------- */
+.recipes-input {
+  min-width: 0;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+}
+.recipes-search { width: 100%; margin-bottom: 0.75rem; }
+
+.recipes-add { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.recipes-add .recipes-input:first-of-type { flex: 1 1 100%; }
+.recipes-servings-label { font-size: 0.8rem; color: var(--muted); }
+.recipes-servings { width: 4.5rem; }
+
+.recipes-add button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--mauve);
+  color: var(--page);
+  cursor: pointer;
+}
+.recipes-add button:hover:not(:disabled) { background: var(--mauve-dark); }
+.recipes-add button:disabled { opacity: 0.6; cursor: progress; }
+
+.recipes-input:focus-visible,
+.recipes-add button:focus-visible,
+.recipes-card:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
+
+/* ---------- Recipe cards ---------- */
+.recipes-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.recipes-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--blush);
+  color: var(--ink);
+  text-decoration: none;
+}
+.recipes-card:hover { border-color: var(--mauve); }
+
+/* Colored box standing in for the food photo */
+.recipes-photo {
+  flex: none;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 8px;
+}
+
+.recipes-info { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.recipes-meta { font-size: 0.8rem; color: var(--muted); }
+
+/* ---------- Messages ---------- */
+.recipes-error { color: var(--error); font-size: 0.9rem; }
+.recipes-muted { color: var(--muted); }
+
+.recipes-empty { text-align: center; margin-top: 3rem; }
+.recipes-empty h2 { font-family: inherit; color: var(--mauve); font-size: 1.1rem; }
+.recipes-empty p { color: var(--muted); }
+
+/* Hidden labels for screen readers */
+.recipes-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
