@@ -1,0 +1,73 @@
+/* theme.css: the shared EatMe look (colors + font), so every screen matches.
+   Use these variables in new styles: var(--mauve), var(--page), etc. */
+:root {
+  --mauve: #8a6a72;
+  --mauve-dark: #6f545b;
+  --blush: #f6e7e8;
+  --page: #fbf7f6;
+  --ink: #2a2426;
+  --muted: #7a6f72;
+  --line: #ddd2d3;
+  --error: #a3261c;
+  --font: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Height of the bottom nav bar, so pages can leave room for it. */
+  --nav-height: 4.25rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --mauve: #c49aa4;
+    --mauve-dark: #d9b3bc;
+    --blush: #2e2427;
+    --page: #181415;
+    --ink: #f1eaeb;
+    --muted: #b3a6a9;
+    --line: #3d3235;
+    --error: #ff8a80;
+  }
+}
+
+/* The whole browser window uses the page color, and the app sits in a
+   phone-width column in the middle, like the Figma frames. */
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font);
+}
+
+#root {
+  width: 100%;
+  max-width: 26rem;
+  margin: 0 auto;
+  min-height: 100vh;
+  text-align: left;
+  border-inline: 0;
+}
+
+/* Headings on the new screens use the EatMe font, not the default Vite one. */
+.settings-title,
+.add-title,
+.add-empty h2,
+.placeholder h1 {
+  font-family: var(--font);
+  font-weight: 700;
+  letter-spacing: normal;
+  color: var(--ink);
+}
+
+/* Screens with the bottom nav get extra space at the bottom so the bar
+   never covers the last card. */
+.app-with-nav {
+  padding-bottom: var(--nav-height);
+}
+
+/* Small placeholder screens ("Coming soon"). */
+.placeholder {
+  padding: 2rem 1.25rem;
+  color: var(--ink);
+}
+.placeholder h1 { font-size: 1.4rem; margin: 0 0 0.5rem; }
+.placeholder p { color: var(--muted); }
+.placeholder a { color: var(--mauve); font-weight: 600; }

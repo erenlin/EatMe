@@ -1,0 +1,36 @@
+/* Bottom nav bar. Stays at the bottom of the screen, as wide as the phone column. */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 26rem;
+  height: var(--nav-height);
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 0.5rem env(safe-area-inset-bottom);
+  background: var(--page);
+  border-top: 1.5px solid var(--line);
+  font-family: var(--font);
+  z-index: 10;
+}
+
+.bottom-nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.4rem 0;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.bottom-nav-tab:hover { color: var(--ink); }
+.bottom-nav-tab.is-active { color: var(--mauve); }
+.bottom-nav-tab:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
