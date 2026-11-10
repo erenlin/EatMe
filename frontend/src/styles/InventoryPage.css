@@ -1,0 +1,148 @@
+/* My Groceries. Same colors and font as PantryPage until theme.css lands;
+   then these variables can point at the theme's. */
+.inventory {
+  --mauve: #8a6a72;
+  --mauve-dark: #6f545b;
+  --blush: #f6e7e8;
+  --page: #fbf7f6;
+  --ink: #2a2426;
+  --muted: #7a6f72;
+  --line: #ddd2d3;
+  --error: #a3261c;
+
+  width: 100%;
+  max-width: 26rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: var(--page);
+  color: var(--ink);
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  text-align: left;
+}
+
+@media (prefers-color-scheme: dark) {
+  .inventory {
+    --mauve: #c49aa4;
+    --mauve-dark: #d9b3bc;
+    --blush: #2e2427;
+    --page: #181415;
+    --ink: #f1eaeb;
+    --muted: #b3a6a9;
+    --line: #3d3235;
+    --error: #ff8a80;
+  }
+}
+
+/* ---------- Title and Add button ---------- */
+.inventory-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.inventory-title { font-family: inherit; font-size: 1.4rem; letter-spacing: normal; margin: 0; }
+
+.inventory-add {
+  font-weight: 600;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  background: var(--mauve);
+  color: var(--page);
+  text-decoration: none;
+}
+.inventory-add:hover { background: var(--mauve-dark); }
+
+/* ---------- Search ---------- */
+.inventory-search {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+}
+
+.inventory-add:focus-visible,
+.inventory-search:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
+
+/* ---------- Cards ---------- */
+.inventory-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.inventory-card {
+  padding: 0.85rem 1rem;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--blush);
+  display: grid;
+  gap: 0.6rem;
+}
+
+.inventory-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.inventory-name { display: block; }
+.inventory-variant { display: block; font-size: 0.8rem; color: var(--muted); }
+
+.inventory-days { font-weight: 600; white-space: nowrap; color: var(--muted); }
+.inventory-days.is-urgent { color: var(--error); }
+
+/* Freshness bar: the track is the line color, the fill is how much life is left. */
+.inventory-bar {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.inventory-bar-fill { height: 100%; border-radius: inherit; background: var(--mauve); }
+.inventory-bar-fill.is-urgent { background: var(--error); }
+
+/* "Use one" and "Delete" */
+.inventory-actions { display: flex; gap: 0.5rem; }
+.inventory-actions button {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.8rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--mauve);
+  color: var(--page);
+  cursor: pointer;
+}
+.inventory-actions button:hover:not(:disabled) { background: var(--mauve-dark); }
+.inventory-actions button.is-secondary {
+  background: transparent;
+  border: 1.5px solid var(--line);
+  color: var(--ink);
+}
+.inventory-actions button.is-secondary:hover:not(:disabled) { background: var(--line); }
+.inventory-actions button:disabled { opacity: 0.6; cursor: progress; }
+.inventory-actions button:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
+
+/* ---------- Messages ---------- */
+.inventory-error { color: var(--error); font-size: 0.9rem; }
+.inventory-muted { color: var(--muted); }
+
+.inventory-empty { text-align: center; margin-top: 3rem; }
+.inventory-empty h2 { font-family: inherit; color: var(--mauve); font-size: 1.1rem; }
+.inventory-empty p { color: var(--muted); }
+
+/* Hidden label for screen readers */
+.inventory-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}

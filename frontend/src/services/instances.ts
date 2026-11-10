@@ -1,10 +1,14 @@
 import { request } from "./client";
+import { lookupItems } from "./items";
+import { listVariants } from "./variants";
 
 
 export type Instance = {
   instance_id: number;
+  item_name: string; // e.g. "Apple" (the backend already sends it)
   variant_name: string;
   quantity: number;
+  unit_weight_grams: number; // weight of one whole unit (one apple)
   store_mode: string;
   total_grams: number;
   grams_remaining: number;
@@ -45,4 +49,40 @@ export async function consumeInstance(instanceId: number, grams: number): Promis
     method: "POST",
     body: { instance_id: instanceId, grams },
   });
+}
+
+// Soonest expiry first; groceries with no expiry date go last.
+function byExpiry(a: Instance, b: Instance): number {
+  if (a.expires_at === b.expires_at) return 0;
+  if (a.expires_at === null) return 1;
+  if (b.expires_at === null) return -1;
+  return new Date(a.expires_at).getTime() - new Date(b.expires_at).getTime();
+}
+
+// One grocery for the My Groceries page: an instance plus its variant's serving size,
+// so the "Use one" button knows how many grams one serving is.
+export type Grocery = Instance & { serving_grams: number };
+
+// Every grocery the user has, in one list.
+// WORKAROUND: the backend has no "list all instances" endpoint yet, so we ask for
+// items -> each item's variants -> each variant's instances, then combine them.
+// When backend adds GET /instances, replace the body with one request.
+export async function listAllInstances(): Promise<Grocery[]> {
+  const items = (await lookupItems("")) ?? [];
+
+  // All items' variants at once.
+  const variantLists = await Promise.all(
+    items.map((item) => listVariants(item.item_id, "")),
+  );
+  const variants = variantLists.flat();
+
+  // All variants' instances at once, each tagged with its variant's serving size.
+  const groceryLists = await Promise.all(
+    variants.map(async (v) => {
+      const rows = (await listInstances(v.variant_id)) ?? [];
+      return rows.map((row) => ({ ...row, serving_grams: v.serving_grams }));
+    }),
+  );
+
+  return groceryLists.flat().sort(byExpiry);
 }
