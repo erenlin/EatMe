@@ -3,13 +3,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { ApiError } from "../services/client";
+import { loadAllFoods, type Food } from "../services/foods";
 import { addInstance } from "../services/instances";
-import { lookupItems } from "../services/items";
-import { listVariants, type Variant } from "../services/variants";
 import "../styles/AddPage.css";
-
-// One search result: a variant plus the name of its item.
-type Food = Variant & { item_name: string };
 
 // Turns any error into a sentence we can show on screen.
 function messageFor(err: unknown): string {
@@ -26,24 +22,6 @@ function messageFor(err: unknown): string {
     default:
       return err.message;
   }
-}
-
-// WORKAROUND: there's no "search all variants" endpoint yet, so we load every item's
-// variants once (items -> variants) and search that list on the page.
-async function loadAllFoods(): Promise<Food[]> {
-  const items = (await lookupItems("")) ?? [];
-  const lists = await Promise.all(
-    items.map(async (item) => {
-      const variants = (await listVariants(item.item_id, "")) ?? [];
-      return variants.map((v) => ({ ...v, item_name: item.item_name }));
-    }),
-  );
-  return lists
-    .flat()
-    .sort(
-      (a, b) =>
-        a.item_name.localeCompare(b.item_name) || a.variant_name.localeCompare(b.variant_name),
-    );
 }
 
 export default function AddPage() {
