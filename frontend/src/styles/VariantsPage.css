@@ -102,3 +102,25 @@
 /* "+ Add a variant": hide the extra ▶ arrow, since the + already says "open me" */
 .variants-add summary { list-style: none; }
 .variants-add summary::-webkit-details-marker { display: none; }
+/* "← Dictionary" and variant rows are links now. */
+.variants a.variants-back { display: inline-block; font-weight: 600; text-decoration: none; }
+.variants a.variants-back:hover { text-decoration: underline; }
+.variants a.variants-toggle { text-decoration: none; position: relative; padding-right: 1.25rem; }
+.variants a.variants-toggle::after {
+  content: "›"; position: absolute; right: 0; top: 50%; transform: translateY(-50%); color: var(--muted);
+}
+.variants a:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
+
+/* Variant details: the facts card above the fridge section. */
+.variants-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0 0 0.5rem;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--blush);
+}
+.variants-facts dt { color: var(--muted); font-size: 0.85rem; }
+.variants-facts dd { margin: 0; text-align: right; text-transform: capitalize; }

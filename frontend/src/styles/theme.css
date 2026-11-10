@@ -9,6 +9,7 @@
   --muted: #7a6f72;
   --line: #ddd2d3;
   --error: #a3261c;
+  --fresh: #4f8a5b; /* freshness bar when it's still mostly fresh */
   --font: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   /* Height of the bottom nav bar, so pages can leave room for it. */
@@ -25,6 +26,7 @@
     --muted: #b3a6a9;
     --line: #3d3235;
     --error: #ff8a80;
+    --fresh: #7fbf8a;
   }
 }
 

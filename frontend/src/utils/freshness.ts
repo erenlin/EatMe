@@ -20,3 +20,12 @@ export function freshnessPercent(addedAt: string, expiresAt: string, now: number
   const percent = ((expires - now) / lifespan) * 100;
   return Math.min(100, Math.max(0, percent));
 }
+
+// Extra class for the freshness bar's color:
+// red when it's about to expire, green while more than half its life is left,
+// and the normal mauve in between.
+export function barTone(urgent: boolean, percent: number): string {
+  if (urgent) return " is-urgent";
+  if (percent > 50) return " is-fresh";
+  return "";
+}

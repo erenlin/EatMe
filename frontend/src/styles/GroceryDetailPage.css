@@ -1,0 +1,105 @@
+/* Grocery details. Colors come from theme.css. */
+.grocery {
+  padding: 1.5rem 1.25rem 2rem;
+  color: var(--ink);
+  font-family: var(--font);
+  text-align: left;
+}
+
+.grocery-back,
+.grocery-link { color: var(--mauve); font-weight: 600; text-decoration: none; }
+.grocery-back:hover,
+.grocery-link:hover { text-decoration: underline; }
+.grocery-link { display: inline-block; margin-top: 1.75rem; font-size: 0.9rem; }
+
+/* The food icon above the name: a soft round badge. */
+.grocery-icon {
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin-top: 1.25rem;
+  border-radius: 50%;
+  background: var(--blush);
+  color: var(--mauve);
+}
+
+.grocery-title { font-family: var(--font); font-size: 1.4rem; letter-spacing: normal; margin: 1rem 0 0; }
+.grocery-heading { font-family: var(--font); font-size: 1rem; margin: 1.75rem 0 0.6rem; }
+.grocery-muted { color: var(--muted); margin: 0.25rem 0 0; }
+
+.grocery-days { font-weight: 600; color: var(--muted); margin: 1.25rem 0 0.5rem; }
+.grocery-days.is-urgent { color: var(--error); }
+
+.grocery-bar { height: 0.5rem; border-radius: 999px; background: var(--line); overflow: hidden; }
+.grocery-bar-fill { height: 100%; border-radius: inherit; background: var(--mauve); }
+.grocery-bar-fill.is-urgent { background: var(--error); }
+.grocery-bar-fill.is-fresh { background: var(--fresh); }
+
+/* Label on the left, value on the right, in one card. */
+.grocery-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+  margin: 1.25rem 0 0;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--blush);
+}
+.grocery-facts dt { color: var(--muted); font-size: 0.85rem; }
+.grocery-facts dd { margin: 0; text-align: right; }
+.grocery-capitalize { text-transform: capitalize; }
+
+.grocery-use { display: flex; gap: 0.5rem; }
+.grocery-use input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+}
+
+.grocery-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+
+.grocery button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--mauve);
+  color: var(--page);
+  cursor: pointer;
+}
+.grocery button:hover:not(:disabled) { background: var(--mauve-dark); }
+.grocery button.is-secondary { background: transparent; border: 1.5px solid var(--line); color: var(--ink); }
+.grocery button.is-secondary:hover:not(:disabled) { background: var(--line); }
+/* "Throw away": a small text button, not a big filled one. */
+.grocery button.grocery-throw {
+  display: block;
+  margin-top: 1rem;
+  padding: 0.25rem 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: transparent;
+  color: var(--muted);
+  text-decoration: underline;
+}
+.grocery button.grocery-throw:hover:not(:disabled) { background: transparent; color: var(--error); }
+.grocery button:disabled { opacity: 0.6; cursor: progress; }
+
+.grocery button:focus-visible,
+.grocery input:focus-visible,
+.grocery-back:focus-visible,
+.grocery-link:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
+
+.grocery-error { color: var(--error); font-size: 0.9rem; margin: 0.75rem 0 0; }
+
+.grocery-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}

@@ -109,6 +109,7 @@
 }
 .inventory-bar-fill { height: 100%; border-radius: inherit; background: var(--mauve); }
 .inventory-bar-fill.is-urgent { background: var(--error); }
+.inventory-bar-fill.is-fresh { background: var(--fresh); }
 
 /* "Use one" and "Delete" */
 .inventory-actions { display: flex; gap: 0.5rem; }
@@ -146,3 +147,14 @@
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+
+/* The top of each card (name, days, bar) is a link to the details page. */
+.inventory-card-link {
+  display: grid;
+  gap: 0.6rem;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 6px;
+}
+.inventory-card-link:hover .inventory-name { text-decoration: underline; }
+.inventory-card-link:focus-visible { outline: 3px solid var(--mauve); outline-offset: 4px; }

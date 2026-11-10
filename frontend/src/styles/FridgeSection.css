@@ -52,3 +52,8 @@
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+
+/* The row's info is a link to that grocery's own page. */
+a.fridge-info { color: inherit; text-decoration: none; border-radius: 6px; }
+a.fridge-info:hover strong { text-decoration: underline; }
+a.fridge-info:focus-visible { outline: 3px solid var(--mauve, #8a6a72); outline-offset: 2px; }
