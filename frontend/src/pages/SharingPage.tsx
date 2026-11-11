@@ -128,6 +128,8 @@ export default function SharingPage() {
         </label>
         <input
           id="share-email"
+          required
+          aria-required="true"
           type="email"
           autoComplete="off"
           placeholder="roommate@example.com"
