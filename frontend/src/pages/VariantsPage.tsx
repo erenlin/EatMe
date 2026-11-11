@@ -16,6 +16,27 @@ import {
 import { lookupItems } from "../services/items";
 import "../styles/VariantsPage.css";
 
+// The two counting methods, in everyday words. The database still stores
+// "divisible" / "numerable"; users never see those terms.
+const METHOD_OPTIONS: { value: CountingMethod; title: string; hint: string }[] = [
+  {
+    value: "divisible",
+    title: "A little at a time",
+    hint: "One package lasts a few meals — like cheese, milk, or rice.",
+  },
+  {
+    value: "numerable",
+    title: "Whole pieces",
+    hint: "You grab one or more at a time — like eggs, apples, or yogurt cups.",
+  },
+];
+
+const STORE_OPTIONS: { value: StoreMode; title: string }[] = [
+  { value: "room", title: "Pantry" },
+  { value: "fridge", title: "Fridge" },
+  { value: "freezer", title: "Freezer" },
+];
+
 // Turns a status code from the backend into a sentence a user can understand.
 function friendlyError(err: unknown): string {
   if (!(err instanceof ApiError)) {
@@ -216,26 +237,48 @@ export default function VariantsPage() {
           onChange={(e) => setServing(e.target.value)}
         />
 
-        <label htmlFor="v-method">How is it counted?</label>
-        <select
-          id="v-method"
-          value={method}
-          onChange={(e) => setMethod(e.target.value as CountingMethod)}
-        >
-          <option value="divisible">Divisible (you use part of one, like cheese)</option>
-          <option value="numerable">Countable (you use whole ones, like eggs)</option>
-        </select>
+        <fieldset className="variants-choice">
+          <legend>How do you use it?</legend>
+          {METHOD_OPTIONS.map((opt) => (
+            <label
+              key={opt.value}
+              className={`variants-choice-option${method === opt.value ? " is-selected" : ""}`}
+            >
+              <input
+                type="radio"
+                name="v-method"
+                value={opt.value}
+                checked={method === opt.value}
+                onChange={() => setMethod(opt.value)}
+              />
+              <span>
+                <strong>{opt.title}</strong>
+                <small>{opt.hint}</small>
+              </span>
+            </label>
+          ))}
+        </fieldset>
 
-        <label htmlFor="v-store">Usually stored in</label>
-        <select
-          id="v-store"
-          value={store}
-          onChange={(e) => setStore(e.target.value as StoreMode)}
-        >
-          <option value="room">Room temperature</option>
-          <option value="fridge">Fridge</option>
-          <option value="freezer">Freezer</option>
-        </select>
+        <fieldset className="variants-choice variants-choice-row">
+          <legend>Where do you usually keep it?</legend>
+          {STORE_OPTIONS.map((opt) => (
+            <label
+              key={opt.value}
+              className={`variants-choice-option${store === opt.value ? " is-selected" : ""}`}
+            >
+              <input
+                type="radio"
+                name="v-store"
+                value={opt.value}
+                checked={store === opt.value}
+                onChange={() => setStore(opt.value)}
+              />
+              <span>
+                <strong>{opt.title}</strong>
+              </span>
+            </label>
+          ))}
+        </fieldset>
 
         <label htmlFor="v-expiry">How many days does it last there?</label>
         <input

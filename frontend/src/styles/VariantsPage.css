@@ -69,6 +69,24 @@
 .variants-form label { font-weight: 600; font-size: 0.9rem; margin: 0.9rem 0 0.35rem; }
 .variants-form button { margin-top: 1.25rem; }
 
+/* "How do you use it?" radio cards */
+.variants-choice { border: 0; padding: 0; margin: 0.9rem 0 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.variants-choice legend { font-weight: 600; font-size: 0.9rem; padding: 0; margin-bottom: 0.35rem; }
+.variants-form .variants-choice-option {
+  display: flex; align-items: flex-start; gap: 0.6rem;
+  margin: 0; padding: 0.7rem 0.8rem;
+  border: 1px solid var(--line); border-radius: 10px;
+  font-weight: 400; cursor: pointer;
+}
+.variants-choice-option.is-selected { border-color: var(--mauve); background: var(--blush); }
+.variants-choice-option input { margin: 0.2rem 0 0; accent-color: var(--mauve); }
+.variants-choice-option span { display: flex; flex-direction: column; gap: 0.15rem; }
+.variants-choice-option small { color: var(--muted); font-size: 0.8rem; }
+/* Short options (storage) sit side by side */
+.variants-choice-row { flex-direction: row; flex-wrap: wrap; }
+.variants-choice-row legend { width: 100%; }
+.variants-choice-row .variants-choice-option { flex: 1 1 0; min-width: 6rem; align-items: center; }
+
 .variants-empty, .variants-note { color: var(--muted); margin-top: 1rem; }
 .variants-error { color: var(--error); font-size: 0.9rem; margin: 0.75rem 0 0; }
 

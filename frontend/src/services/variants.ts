@@ -73,10 +73,10 @@ export function checkServingRule(
     return "Weight and serving size must both be more than 0 grams.";
   }
   if (method === "divisible" && serving > typicalWeight) {
-    return "For divisible food, one serving can't weigh more than one whole unit.";
+    return "If you use it a little at a time, one serving can't weigh more than the whole package.";
   }
   if (method === "numerable" && serving < typicalWeight) {
-    return "For countable food, one serving must be at least one whole unit.";
+    return "If you use whole pieces, one serving has to be at least one whole piece.";
   }
   return "";
 }

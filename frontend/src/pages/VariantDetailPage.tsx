@@ -82,8 +82,8 @@ export default function VariantDetailPage() {
             <dd>{variant.typical_weight_grams} g</dd>
             <dt>One serving</dt>
             <dd>{variant.serving_grams} g</dd>
-            <dt>Counted as</dt>
-            <dd>{variant.counting_method === "numerable" ? "whole units" : "divisible"}</dd>
+            <dt>You use it</dt>
+            <dd>{variant.counting_method === "numerable" ? "in whole pieces" : "a little at a time"}</dd>
             <dt>Usually stored</dt>
             <dd>{variant.default_store_mode}</dd>
           </dl>
