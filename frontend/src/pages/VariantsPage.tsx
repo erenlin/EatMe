@@ -214,12 +214,21 @@ export default function VariantsPage() {
       <details className="variants-add">
       <summary>+ Add a variant</summary>
       <form className="variants-form" onSubmit={handleAdd} noValidate>
-        <label htmlFor="v-name">Name</label>
-        <input id="v-name" value={name} onChange={(e) => setName(e.target.value)} />
+        <p className="required-note">
+          <span className="req" aria-hidden="true">*</span> Required
+        </p>
+        <label htmlFor="v-name">
+          Name <span className="req" aria-hidden="true">*</span>
+        </label>
+        <input id="v-name" required aria-required="true" value={name} onChange={(e) => setName(e.target.value)} />
 
-        <label htmlFor="v-weight">Weight of one unit (grams)</label>
+        <label htmlFor="v-weight">
+          Weight of one unit (grams) <span className="req" aria-hidden="true">*</span>
+        </label>
         <input
           id="v-weight"
+          required
+          aria-required="true"
           type="number"
           min={1}
           inputMode="numeric"
@@ -227,9 +236,13 @@ export default function VariantsPage() {
           onChange={(e) => setWeight(e.target.value)}
         />
 
-        <label htmlFor="v-serving">One serving (grams)</label>
+        <label htmlFor="v-serving">
+          One serving (grams) <span className="req" aria-hidden="true">*</span>
+        </label>
         <input
           id="v-serving"
+          required
+          aria-required="true"
           type="number"
           min={1}
           inputMode="numeric"
@@ -238,7 +251,9 @@ export default function VariantsPage() {
         />
 
         <fieldset className="variants-choice">
-          <legend>How do you use it?</legend>
+          <legend>
+            How do you use it? <span className="req" aria-hidden="true">*</span>
+          </legend>
           {METHOD_OPTIONS.map((opt) => (
             <label
               key={opt.value}
@@ -260,7 +275,9 @@ export default function VariantsPage() {
         </fieldset>
 
         <fieldset className="variants-choice variants-choice-row">
-          <legend>Where do you usually keep it?</legend>
+          <legend>
+            Where do you usually keep it? <span className="req" aria-hidden="true">*</span>
+          </legend>
           {STORE_OPTIONS.map((opt) => (
             <label
               key={opt.value}
@@ -280,9 +297,13 @@ export default function VariantsPage() {
           ))}
         </fieldset>
 
-        <label htmlFor="v-expiry">How many days does it last there?</label>
+        <label htmlFor="v-expiry">
+          How many days does it last there? <span className="req" aria-hidden="true">*</span>
+        </label>
         <input
           id="v-expiry"
+          required
+          aria-required="true"
           type="number"
           min={1}
           max={3650}

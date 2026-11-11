@@ -160,9 +160,16 @@ export default function RecipeDetailPage() {
                 </p>
               ) : (
                 <form className="recipe-form" onSubmit={handleAdd} noValidate>
-                  <label htmlFor="ing-food">Food</label>
+                  <p className="required-note">
+                    <span className="req" aria-hidden="true">*</span> Required
+                  </p>
+                  <label htmlFor="ing-food">
+                    Food <span className="req" aria-hidden="true">*</span>
+                  </label>
                   <select
                     id="ing-food"
+                    required
+                    aria-required="true"
                     value={variantId}
                     onChange={(e) => setVariantId(e.target.value)}
                   >
@@ -175,7 +182,7 @@ export default function RecipeDetailPage() {
                   </select>
 
                   <label htmlFor="ing-grams">
-                    Grams for the whole recipe
+                    Grams for the whole recipe <span className="req" aria-hidden="true">*</span>
                     {picked && (
                       <span className="recipe-hint">
                         {" "}
@@ -185,6 +192,8 @@ export default function RecipeDetailPage() {
                   </label>
                   <input
                     id="ing-grams"
+                    required
+                    aria-required="true"
                     type="number"
                     min={1}
                     inputMode="numeric"

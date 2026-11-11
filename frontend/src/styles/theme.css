@@ -73,3 +73,9 @@ body {
 .placeholder h1 { font-size: 1.4rem; margin: 0 0 0.5rem; }
 .placeholder p { color: var(--muted); }
 .placeholder a { color: var(--mauve); font-weight: 600; }
+
+/* Required fields: a red asterisk after the label, and a "* Required" note at the top
+   of each form. Use <span className="req" aria-hidden="true">*</span> in the label
+   and aria-required="true" on the input. */
+.req { color: var(--error); font-weight: 700; margin-left: 0.15rem; }
+.required-note { font-size: 0.8rem; color: var(--muted); margin: 0 0 0.25rem; }

@@ -65,3 +65,59 @@
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+
+/* ---- User-study fixes ---- */
+.add-intro { color: var(--muted); font-size: 0.9rem; margin: -0.25rem 0 1rem; }
+.add-intro strong { color: var(--ink); }
+
+/* Search bar with a magnifying-glass icon, so it doesn't look like the other boxes */
+.add-search-wrap { position: relative; }
+.add-search-icon {
+  position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%);
+  color: var(--muted); font-size: 1.1rem; pointer-events: none;
+}
+.add .add-search { padding-left: 2.1rem; }
+
+/* "How many" stays visible next to each quantity box */
+.add-qty-label { font-size: 0.7rem; color: var(--muted); align-self: center; }
+
+.add-nomatch { text-align: center; margin: 1.5rem 0 0.5rem; }
+
+/* Big, obvious way to add something that isn't saved yet */
+.add-new-button {
+  display: block; width: 100%; margin-top: 1rem;
+  background: transparent !important; color: var(--mauve) !important;
+  border: 1.5px dashed var(--mauve) !important; padding: 0.75rem !important;
+}
+.add-new-button:hover { background: var(--blush) !important; }
+
+/* New food form */
+.add-new { display: flex; flex-direction: column; }
+.add-new-title { font-family: var(--font); font-size: 1.1rem; margin: 0 0 0.25rem; letter-spacing: normal; color: var(--ink); }
+.add-new > label, .add-choices legend { font-weight: 600; font-size: 0.9rem; margin: 0.9rem 0 0.35rem; padding: 0; }
+.add-new input:not([type="radio"]) { width: 100%; }
+.add-optional { font-weight: 400; color: var(--muted); }
+
+.add-choices { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.add-choices legend { width: 100%; }
+.add-choice {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.45rem 0.75rem; border: 1.5px solid var(--line); border-radius: 999px;
+  font-size: 0.85rem; cursor: pointer;
+}
+.add-choice.is-picked { border-color: var(--mauve); background: var(--blush); font-weight: 600; }
+.add-choice input { accent-color: var(--mauve); margin: 0; }
+
+.add-new-actions { display: flex; gap: 0.5rem; margin-top: 1.25rem; }
+.add-new-actions button { flex: 1; padding: 0.7rem; }
+.add .is-secondary { background: transparent; color: var(--mauve); border: 1.5px solid var(--mauve); }
+
+/* Required fields: red asterisk, and a red outline + message on the field that's missing */
+.add-required-note { margin: 0; }
+.add input[aria-invalid="true"] { border-color: var(--error); }
+.add-field-error { color: var(--error); font-size: 0.8rem; margin: 0.3rem 0 0; }
+
+/* "Added 2 Peach ✓" confirmation */
+.add-done {
+  margin-top: 40vh; text-align: center; font-size: 1.1rem; font-weight: 700; color: var(--mauve);
+}
