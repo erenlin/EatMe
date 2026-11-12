@@ -1,8 +1,9 @@
 // Recipes for You (D1): the user's recipes, a search box, and a simple add form.
 // Tapping a recipe opens /recipes/{id} (the ingredients screen).
 import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router";
 import { ApiError } from "../services/client";
-import { addRecipe, listRecipes, type Recipe } from "../services/recipes";
+import { addRecipe, listRecipes, type IngredientLine, type Recipe } from "../services/recipes";
 import "../styles/RecipesPage.css";
 
 const MESSAGES: Record<number, string> = {
@@ -19,6 +20,34 @@ function messageFor(err: unknown): string {
 
 // Stand-in "photo" colors. Each recipe always gets the same one.
 const PHOTO_COLORS = ["#e8c7cc", "#c9d8c5", "#f1dcb5", "#c8d3e6", "#e3cfe6"];
+
+// Segmented coverage bar: green for full, yellow for partial, red for missing.
+function CoverageBar({ lines }: { lines: IngredientLine[] }) {
+  const total = lines.length;
+  if (total === 0) return null;
+  const full = lines.filter((l) => l.status === "full").length;
+  const partial = lines.filter((l) => l.status === "partial").length;
+  const none = total - full - partial;
+  const pct = (n: number) => `${Math.round((n / total) * 100)}%`;
+  const label = full === total
+    ? "All ingredients on hand"
+    : `${full} of ${total} ingredients on hand`;
+  return (
+    <span
+      className="recipes-coverage"
+      role="meter"
+      aria-label={label}
+      aria-valuenow={full}
+      aria-valuemin={0}
+      aria-valuemax={total}
+      title={label}
+    >
+      {full > 0 && <span className="recipes-coverage-full" style={{ width: pct(full) }} />}
+      {partial > 0 && <span className="recipes-coverage-partial" style={{ width: pct(partial) }} />}
+      {none > 0 && <span className="recipes-coverage-none" style={{ width: pct(none) }} />}
+    </span>
+  );
+}
 
 export default function RecipesPage() {
   // ---- Sticky notes (what the page remembers) ----
@@ -131,8 +160,7 @@ export default function RecipesPage() {
         <ul className="recipes-list">
           {shown.map((r) => (
             <li key={r.recipe_id}>
-              {/* TODO: swap for the router's <Link> once routing lands. */}
-              <a className="recipes-card" href={`/recipes/${r.recipe_id}`}>
+              <Link className="recipes-card" to={`/recipes/${r.recipe_id}`}>
                 <span
                   className="recipes-photo"
                   style={{ background: PHOTO_COLORS[r.recipe_id % PHOTO_COLORS.length] }}
@@ -144,8 +172,11 @@ export default function RecipesPage() {
                     {r.servings} {r.servings === 1 ? "serving" : "servings"} · {r.ingredient_count}{" "}
                     {r.ingredient_count === 1 ? "ingredient" : "ingredients"}
                   </span>
+                  {r.ingredient_lines.length > 0 && (
+                    <CoverageBar lines={r.ingredient_lines} />
+                  )}
                 </span>
-              </a>
+              </Link>
             </li>
           ))}
         </ul>

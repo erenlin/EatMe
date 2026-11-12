@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -70,17 +71,18 @@ type ItemVariant struct {
 
 // Recipe is one row from usp_recipe_get.
 type Recipe struct {
-	RecipeID        int       `json:"recipe_id"`
-	UserID          int       `json:"user_id"`
-	OwnerName       string    `json:"owner_name"`
-	IsOwn           bool      `json:"is_own"`
-	RecipeName      string    `json:"recipe_name"`
-	Servings        int       `json:"servings"`
-	Instructions    *string   `json:"instructions"`
-	IngredientCount int       `json:"ingredient_count"`
-	CoverageScore   *float32  `json:"coverage_score"`
-	CreatedAt       time.Time `json:"created_at"`
-	TotalCount      int       `json:"total_count"`
+	RecipeID        int             `json:"recipe_id"`
+	UserID          int             `json:"user_id"`
+	OwnerName       string          `json:"owner_name"`
+	IsOwn           bool            `json:"is_own"`
+	RecipeName      string          `json:"recipe_name"`
+	Servings        int             `json:"servings"`
+	Instructions    *string         `json:"instructions"`
+	IngredientCount int             `json:"ingredient_count"`
+	IngredientLines json.RawMessage `json:"ingredient_lines"` // [{name, status, needed_grams, available_grams}]
+	CoverageScore   *float32        `json:"coverage_score"`
+	CreatedAt       time.Time       `json:"created_at"`
+	TotalCount      int             `json:"total_count"`
 }
 
 var (
@@ -472,7 +474,7 @@ func mapInstanceErr(err error) error {
 func (s *Store) GetRecipes(ctx context.Context, userID int, includeShared, shared, weighted bool, page int) ([]Recipe, error) {
 	rows, err := s.pool.Query(ctx, `
 		select recipe_id, user_id, owner_name, is_own, recipe_name, servings,
-		       instructions, ingredient_count, coverage_score, created_at, total_count
+		       instructions, ingredient_count, ingredient_lines, coverage_score, created_at, total_count
 		from kitchen.usp_recipe_get(
 			$1,
 			p_include_shared := $2,
@@ -490,10 +492,13 @@ func (s *Store) GetRecipes(ctx context.Context, userID int, includeShared, share
 		var r Recipe
 		if err := rows.Scan(&r.RecipeID, &r.UserID, &r.OwnerName, &r.IsOwn,
 			&r.RecipeName, &r.Servings, &r.Instructions, &r.IngredientCount,
-			&r.CoverageScore, &r.CreatedAt, &r.TotalCount); err != nil {
+			&r.IngredientLines, &r.CoverageScore, &r.CreatedAt, &r.TotalCount); err != nil {
 			return nil, mapRecipeErr(err)
 		}
 		r.CreatedAt = r.CreatedAt.UTC()
+		if r.IngredientLines == nil {
+			r.IngredientLines = json.RawMessage("[]")
+		}
 		out = append(out, r)
 	}
 	return out, mapRecipeErr(rows.Err())
