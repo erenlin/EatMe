@@ -104,6 +104,19 @@
 .recipes-info { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
 .recipes-meta { font-size: 0.8rem; color: var(--muted); }
 
+/* ---------- Coverage bar ---------- */
+.recipes-coverage {
+  display: flex;
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.3rem;
+  background: var(--line);
+}
+.recipes-coverage-full    { background: #5a9a6a; }
+.recipes-coverage-partial { background: #c9a94a; }
+.recipes-coverage-none    { background: var(--line); }
+
 /* ---------- Messages ---------- */
 .recipes-error { color: var(--error); font-size: 0.9rem; }
 .recipes-muted { color: var(--muted); }

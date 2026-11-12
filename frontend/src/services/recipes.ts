@@ -2,6 +2,14 @@
 // and the Recipe struct in backend/internal/store/store.go.
 import { request } from "./client";
 
+// One ingredient line from GET /recipes (inside ingredient_lines).
+export type IngredientLine = {
+  name: string;
+  status: "full" | "partial" | "none";
+  needed_grams: number;
+  available_grams: number;
+};
+
 // One row from GET /recipes.
 export type Recipe = {
   recipe_id: number;
@@ -12,6 +20,7 @@ export type Recipe = {
   servings: number;
   instructions: string | null;
   ingredient_count: number;
+  ingredient_lines: IngredientLine[]; // per-ingredient coverage, sorted full→partial→none
   coverage_score: number | null; // how much of it your groceries cover
   created_at: string;
   total_count: number; // recipes across all pages
