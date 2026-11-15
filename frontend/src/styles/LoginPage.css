@@ -78,3 +78,30 @@
 .login button:disabled { opacity: 0.6; cursor: progress; }
 
 .login-error { color: var(--error); font-size: 0.85rem; margin: -0.4rem 0 0.75rem; }
+
+/* Sign up: hint under a field, the gender radios, and the log in / sign up switch link. */
+.login-hint { color: var(--muted); font-size: 0.8rem; margin: -0.8rem 0 1.1rem; }
+
+.login-radios {
+  border: 0;
+  padding: 0;
+  margin: 0 0 1.1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+.login-radios legend { font-size: 0.85rem; margin-bottom: 0.5rem; padding: 0; }
+.login .login-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  margin: 0;
+  cursor: pointer;
+}
+.login .login-radio input { margin: 0; accent-color: var(--mauve); }
+.login input[type="date"] { color-scheme: light dark; }
+
+.login-switch { font-size: 0.85rem; text-align: center; margin-top: 1.5rem; color: var(--muted); }
+.login-switch a { color: var(--mauve); font-weight: 600; }
+.login-switch a:focus-visible { outline: 2px solid var(--mauve); outline-offset: 2px; }

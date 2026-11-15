@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router";
 import { ApiError } from "../services/client";
 import { useAuth } from "../hooks/useAuth";
 import "../styles/LoginPage.css";
@@ -72,6 +73,10 @@ export default function LoginPage() {
             {submitting ? "Logging in…" : "Log in"}
           </button>
         </form>
+
+        <p className="login-switch">
+          New to EatMe? <Link to="/signup">Create an account</Link>
+        </p>
       </section>
     </main>
   );
