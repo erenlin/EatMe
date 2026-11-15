@@ -7,7 +7,6 @@ import { lookupItems } from "../services/items";
 import { barTone, daysLeft, freshnessPercent } from "../utils/freshness";
 import "../styles/InventoryPage.css";
 
-// Turns any error into a sentence we can show on screen.
 function messageFor(err: unknown): string {
   if (!(err instanceof ApiError)) return "Can't reach the server. Make sure the backend is running.";
   if (err.status === 401) return "Your login expired. Log out and log back in.";
@@ -15,28 +14,23 @@ function messageFor(err: unknown): string {
   return err.message;
 }
 
-// How many whole units are left: 2 apples, then 1 after "Use one".
 function unitsLeft(g: Grocery): number {
   if (g.unit_weight_grams > 0) return Math.ceil(g.grams_remaining / g.unit_weight_grams);
   return g.quantity;
 }
 
 export default function InventoryPage() {
-  // ---- Sticky notes (what the page remembers) ----
   const [groceries, setGroceries] = useState<Grocery[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(""); // loading failed: shown instead of the list
-  const [actionError, setActionError] = useState(""); // a button failed: shown above the list
+  const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [search, setSearch] = useState("");
-  const [busyId, setBusyId] = useState<number | null>(null); // card with a request in flight
-  // The time the list loaded. Freshness is worked out from this, so nothing
-  // reads the clock during render.
+  const [busyId, setBusyId] = useState<number | null>(null);
   const [loadedAt, setLoadedAt] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement>(null);
 
-  // ---- Debounced autocomplete: call item lookup as user types ----
   useEffect(() => {
     const q = search.trim();
     const id = window.setTimeout(() => {
@@ -48,7 +42,6 @@ export default function InventoryPage() {
     return () => window.clearTimeout(id);
   }, [search]);
 
-  // Close dropdown when clicking outside the search area.
   useEffect(() => {
     function onPointerDown(e: PointerEvent) {
       if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) {
@@ -59,7 +52,6 @@ export default function InventoryPage() {
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, []);
 
-  // ---- Load all groceries once, when the page opens ----
   useEffect(() => {
     listAllInstances()
       .then((rows) => {
@@ -70,7 +62,6 @@ export default function InventoryPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // ---- Use some grams of one grocery, then update its card ----
   async function spendGrams(g: Grocery, grams: number) {
     setActionError("");
     setBusyId(g.instance_id);
@@ -78,7 +69,7 @@ export default function InventoryPage() {
       const result = await consumeInstance(g.instance_id, grams);
       setGroceries((list) =>
         result.grams_remaining <= 0
-          ? list.filter((x) => x.instance_id !== g.instance_id) // all gone: remove the card
+          ? list.filter((x) => x.instance_id !== g.instance_id)
           : list.map((x) =>
               x.instance_id === g.instance_id ? { ...x, grams_remaining: result.grams_remaining } : x,
             ),
@@ -90,19 +81,11 @@ export default function InventoryPage() {
     }
   }
 
-  // "Use one": one serving, or whatever is left if that's less.
-  function handleUseOne(g: Grocery) {
-    const serving = g.serving_grams > 0 ? g.serving_grams : g.grams_remaining;
-    spendGrams(g, Math.min(serving, g.grams_remaining));
-  }
-
-  // "Delete". WORKAROUND: there's no delete endpoint yet, so we use up every gram left.
   function handleDelete(g: Grocery) {
     if (!window.confirm(`Remove ${g.item_name} from your groceries?`)) return;
     spendGrams(g, g.grams_remaining);
   }
 
-  // ---- Search: filter the list we already have (no backend call) ----
   const query = search.trim().toLowerCase();
   const shown = query
     ? groceries.filter(
@@ -112,7 +95,6 @@ export default function InventoryPage() {
       )
     : groceries;
 
-  // ---- What you see ----
   return (
     <main className="inventory">
       <header className="inventory-header">
@@ -183,7 +165,7 @@ export default function InventoryPage() {
               grocery={g}
               now={loadedAt}
               busy={busyId === g.instance_id}
-              onUseOne={() => handleUseOne(g)}
+              onUse={(grams) => spendGrams(g, grams)}
               onDelete={() => handleDelete(g)}
             />
           ))}
@@ -193,17 +175,40 @@ export default function InventoryPage() {
   );
 }
 
-// One card: "Apple 2x", days left, a freshness bar, and the two buttons.
 type CardProps = {
   grocery: Grocery;
   now: number;
   busy: boolean;
-  onUseOne: () => void;
+  onUse: (grams: number) => void;
   onDelete: () => void;
 };
 
-function GroceryCard({ grocery, now, busy, onUseOne, onDelete }: CardProps) {
+function defaultUseGrams(g: Grocery): number {
+  const max = g.grams_remaining;
+  if (g.serving_grams > 0) return Math.min(g.serving_grams, max);
+  if (g.unit_weight_grams > 0) return Math.min(g.unit_weight_grams, max);
+  return Math.min(100, max);
+}
+
+function useAmountLabel(grams: number, g: Grocery): string {
+  if (g.unit_weight_grams > 0) {
+    const units = Math.round((grams / g.unit_weight_grams) * 10) / 10;
+    return `≈${units} unit${units === 1 ? "" : "s"}`;
+  }
+  if (g.serving_grams > 0) {
+    const svgs = Math.round((grams / g.serving_grams) * 10) / 10;
+    return `≈${svgs} serving${svgs === 1 ? "" : "s"}`;
+  }
+  return "";
+}
+
+function GroceryCard({ grocery, now, busy, onUse, onDelete }: CardProps) {
   const { item_name, variant_name, added_at, expires_at } = grocery;
+  const maxGrams = Math.max(1, grocery.grams_remaining);
+
+  const [useGrams, setUseGrams] = useState(() => defaultUseGrams(grocery));
+  // Clamp to available grams at render time — no effect needed.
+  const effectiveGrams = Math.max(1, Math.min(useGrams, grocery.grams_remaining));
 
   let daysText = "no expiry set";
   let urgent = false;
@@ -215,45 +220,65 @@ function GroceryCard({ grocery, now, busy, onUseOne, onDelete }: CardProps) {
     percent = freshnessPercent(added_at, expires_at, now);
   }
 
+  // Slider snaps to whole-unit steps for discrete items (apples, eggs, etc.)
+  const step = grocery.unit_weight_grams > 0 ? grocery.unit_weight_grams : 1;
+  const label = useAmountLabel(effectiveGrams, grocery);
+
   return (
     <li className="inventory-card">
-      {/* Tapping the name, days, or bar opens the details page. The grocery rides
-          along in router state so that page can show it right away. */}
       <Link
         className="inventory-card-link"
         to={`/groceries/${grocery.instance_id}`}
         state={{ grocery }}
       >
-      <div className="inventory-card-top">
-        <div>
-          <strong className="inventory-name">
-            {item_name} {unitsLeft(grocery)}x
-          </strong>
-          <span className="inventory-variant">{variant_name}</span>
+        <div className="inventory-card-top">
+          <div>
+            <strong className="inventory-name">
+              {item_name} {unitsLeft(grocery)}x
+            </strong>
+            <span className="inventory-variant">{variant_name}</span>
+          </div>
+          <span className={urgent ? "inventory-days is-urgent" : "inventory-days"}>{daysText}</span>
         </div>
-        <span className={urgent ? "inventory-days is-urgent" : "inventory-days"}>{daysText}</span>
-      </div>
 
-      {percent !== null && (
-        <div
-          className="inventory-bar"
-          role="progressbar"
-          aria-label={`${item_name} freshness`}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(percent)}
-        >
+        {percent !== null && (
           <div
-            className={`inventory-bar-fill${barTone(urgent, percent)}`}
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-      )}
+            className="inventory-bar"
+            role="progressbar"
+            aria-label={`${item_name} freshness`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(percent)}
+          >
+            <div
+              className={`inventory-bar-fill${barTone(urgent, percent)}`}
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+        )}
       </Link>
 
+      {/* Use slider */}
+      <div className="inventory-use-row">
+        <input
+          type="range"
+          className="inventory-use-slider"
+          min={1}
+          max={maxGrams}
+          step={step}
+          value={effectiveGrams}
+          disabled={busy}
+          aria-label={`Grams to use from ${item_name}`}
+          onChange={(e) => setUseGrams(Number(e.target.value))}
+        />
+        <span className="inventory-use-label">
+          {effectiveGrams}g{label ? ` ${label}` : ""}
+        </span>
+      </div>
+
       <div className="inventory-actions">
-        <button type="button" onClick={onUseOne} disabled={busy}>
-          {busy ? "…" : "Use one"}
+        <button type="button" onClick={() => onUse(effectiveGrams)} disabled={busy}>
+          {busy ? "…" : "Use"}
         </button>
         <button type="button" className="is-secondary" onClick={onDelete} disabled={busy}>
           Delete
