@@ -152,15 +152,16 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]string{"token": token})
 }
 
-// Me returns the username from the validated token.
+// Me returns the username and user_id from the validated token.
 func (c *AuthController) Me(w http.ResponseWriter, r *http.Request) {
 	username, ok := r.Context().Value(usernameKey).(string)
-	if !ok || username == "" {
+	userID, okID := r.Context().Value(userIDKey).(int)
+	if !ok || username == "" || !okID || userID == 0 {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{"username": username})
+	_ = json.NewEncoder(w).Encode(map[string]any{"username": username, "user_id": userID})
 }
 
 // RequireAuth validates the bearer JWT and puts the username in the request context.

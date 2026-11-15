@@ -2,11 +2,10 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
-	"errors"
 
 	"eatme/internal/store"
 )
@@ -55,10 +54,10 @@ func (g *GrantController) List(w http.ResponseWriter, r *http.Request) {
 }
 
 type ShareRequest struct {
-	GranteeEmail string `json:"grantee_email"`
+	GranteeUserID int `json:"grantee_user_id"`
 }
 
-// Share gives another user (identified by email) access to the logged-in user's data.
+// Share gives another user (identified by user_id) access to the logged-in user's data.
 func (g *GrantController) Share(w http.ResponseWriter, r *http.Request) {
 	grantorID, ok := r.Context().Value(userIDKey).(int)
 	if !ok || grantorID == 0 {
@@ -67,25 +66,12 @@ func (g *GrantController) Share(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req ShareRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.GranteeEmail) == "" {
-		http.Error(w, "grantee_email is required", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.GranteeUserID <= 0 {
+		http.Error(w, "grantee_user_id is required", http.StatusBadRequest)
 		return
 	}
 
-	// Look up the grantee id by email. No match gets the same 404 as an unknown id.
-	email := strings.ToLower(strings.TrimSpace(req.GranteeEmail))
-	granteeID, _, err := g.store.FetchUser(r.Context(), email)
-	if err != nil {
-		if errors.Is(err, store.ErrUserNotFound) {
-			http.Error(w, "grantee not found", http.StatusNotFound)
-			return
-		}
-		log.Printf("grantee lookup failed: %v", err)
-		http.Error(w, "server error", http.StatusInternalServerError)
-		return
-	}
-
-	result, err := g.store.GrantShare(r.Context(), grantorID, granteeID)
+	result, err := g.store.GrantShare(r.Context(), grantorID, req.GranteeUserID)
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrSelfGrant):
