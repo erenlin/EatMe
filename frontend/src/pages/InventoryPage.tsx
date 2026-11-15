@@ -4,6 +4,9 @@ import { Link } from "react-router";
 import { ApiError } from "../services/client";
 import { consumeInstance, listAllInstances, type Grocery } from "../services/instances";
 import { lookupItems } from "../services/items";
+import ConfirmButton from "../components/ConfirmButton";
+import UseSlider from "../components/UseSlider";
+import { clampUseGrams, defaultUseGrams } from "../utils/useAmount";
 import { barTone, daysLeft, freshnessPercent } from "../utils/freshness";
 import "../styles/InventoryPage.css";
 
@@ -79,11 +82,6 @@ export default function InventoryPage() {
     } finally {
       setBusyId(null);
     }
-  }
-
-  function handleDelete(g: Grocery) {
-    if (!window.confirm(`Remove ${g.item_name} from your groceries?`)) return;
-    spendGrams(g, g.grams_remaining);
   }
 
   const query = search.trim().toLowerCase();
@@ -166,7 +164,7 @@ export default function InventoryPage() {
               now={loadedAt}
               busy={busyId === g.instance_id}
               onUse={(grams) => spendGrams(g, grams)}
-              onDelete={() => handleDelete(g)}
+              onDelete={() => spendGrams(g, g.grams_remaining)}
             />
           ))}
         </ul>
@@ -183,36 +181,11 @@ type CardProps = {
   onDelete: () => void;
 };
 
-function defaultUseGrams(g: Grocery): number {
-  const max = g.grams_remaining;
-  if (g.serving_grams > 0) return Math.min(g.serving_grams, max);
-  if (g.unit_weight_grams > 0) return Math.min(g.unit_weight_grams, max);
-  return Math.min(100, max);
-}
-
-function useAmountLabel(grams: number, g: Grocery): string {
-  if (g.unit_weight_grams > 0) {
-    const units = Math.round((grams / g.unit_weight_grams) * 10) / 10;
-    return `≈${units} unit${units === 1 ? "" : "s"}`;
-  }
-  if (g.serving_grams > 0) {
-    const svgs = Math.round((grams / g.serving_grams) * 10) / 10;
-    return `≈${svgs} serving${svgs === 1 ? "" : "s"}`;
-  }
-  return "";
-}
-
 function GroceryCard({ grocery, now, busy, onUse, onDelete }: CardProps) {
   const { item_name, variant_name, added_at, expires_at } = grocery;
-  const maxGrams = Math.max(1, grocery.grams_remaining);
-
   const [useGrams, setUseGrams] = useState(() => defaultUseGrams(grocery));
-  // For discrete items, min = step so snap points align with whole units.
-  // e.g. 4 oranges at 130g each → min=130, step=130 → snaps to 130/260/390/520.
-  const step = grocery.unit_weight_grams > 0 ? grocery.unit_weight_grams : 1;
-  const sliderMin = step;
   // Clamp to available grams at render time — no effect needed.
-  const effectiveGrams = Math.max(sliderMin, Math.min(useGrams, grocery.grams_remaining));
+  const effectiveGrams = clampUseGrams(useGrams, grocery);
 
   let daysText = "no expiry set";
   let urgent = false;
@@ -223,9 +196,6 @@ function GroceryCard({ grocery, now, busy, onUse, onDelete }: CardProps) {
     urgent = days <= 1;
     percent = freshnessPercent(added_at, expires_at, now);
   }
-
-  // Slider snaps to whole-unit steps for discrete items (apples, eggs, etc.)
-  const label = useAmountLabel(effectiveGrams, grocery);
 
   return (
     <li className="inventory-card">
@@ -261,31 +231,26 @@ function GroceryCard({ grocery, now, busy, onUse, onDelete }: CardProps) {
         )}
       </Link>
 
-      {/* Use slider */}
-      <div className="inventory-use-row">
-        <input
-          type="range"
-          className="inventory-use-slider"
-          min={sliderMin}
-          max={maxGrams}
-          step={step}
-          value={effectiveGrams}
-          disabled={busy}
-          aria-label={`Grams to use from ${item_name}`}
-          onChange={(e) => setUseGrams(Number(e.target.value))}
-        />
-        <span className="inventory-use-label">
-          {effectiveGrams}g{label ? ` ${label}` : ""}
-        </span>
-      </div>
+      <UseSlider
+        grocery={grocery}
+        itemName={item_name}
+        grams={effectiveGrams}
+        disabled={busy}
+        onChange={setUseGrams}
+      />
 
       <div className="inventory-actions">
         <button type="button" onClick={() => onUse(effectiveGrams)} disabled={busy}>
           {busy ? "…" : "Use"}
         </button>
-        <button type="button" className="is-secondary" onClick={onDelete} disabled={busy}>
-          Delete
-        </button>
+        <ConfirmButton
+          label="Delete"
+          className="is-secondary"
+          question={`Remove ${item_name} from your groceries?`}
+          confirmLabel="Yes, remove"
+          onConfirm={onDelete}
+          disabled={busy}
+        />
       </div>
     </li>
   );

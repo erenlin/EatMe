@@ -1,0 +1,31 @@
+/* Searchable food picker. The input takes the surrounding form's input style;
+   this file only adds the dropdown list. Colors come from theme.css. */
+.food-picker { position: relative; display: flex; flex-direction: column; }
+.food-picker input { width: 100%; box-sizing: border-box; }
+
+.food-picker-list {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 16rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--page);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.12);
+}
+
+.food-picker-option {
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.food-picker-option.is-active { background: var(--blush); color: var(--ink); }
+
+.food-picker-more,
+.food-picker-none { padding: 0.45rem 0.75rem; font-size: 0.8rem; color: var(--muted); margin: 0; }

@@ -1,6 +1,7 @@
 // Recipe details (/recipes/:id): the recipe's ingredients (D2a) and a form to add one (D2b).
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router";
+import FoodPicker from "../components/FoodPicker";
 import { ApiError } from "../services/client";
 import { loadAllFoods, type Food } from "../services/foods";
 import { addIngredient, listIngredients, type Ingredient } from "../services/ingredients";
@@ -43,7 +44,8 @@ export default function RecipeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  const [variantId, setVariantId] = useState(""); // picked food, as text from the dropdown
+  const [variantId, setVariantId] = useState<number | null>(null); // picked food
+  const [pickerKey, setPickerKey] = useState(0); // bump to clear the picker after an add
   const [grams, setGrams] = useState("");
   const [adding, setAdding] = useState(false);
   const [formError, setFormError] = useState("");
@@ -72,10 +74,10 @@ export default function RecipeDetailPage() {
     e.preventDefault();
     setFormError("");
 
-    const pickedId = Number(variantId);
+    const pickedId = variantId;
     const amount = Number(grams);
-    if (!pickedId) {
-      setFormError("Pick a food to add.");
+    if (pickedId === null) {
+      setFormError("Pick a food from the list.");
       return;
     }
     if (!Number.isInteger(amount) || amount < 1) {
@@ -87,7 +89,8 @@ export default function RecipeDetailPage() {
     try {
       await addIngredient(recipeId, pickedId, amount);
       setIngredients(await listIngredients(recipeId)); // reload so it shows in order
-      setVariantId("");
+      setVariantId(null);
+      setPickerKey((k) => k + 1);
       setGrams("");
     } catch (err) {
       setFormError(messageFor(err));
@@ -96,10 +99,10 @@ export default function RecipeDetailPage() {
     }
   }
 
-  // Foods already in the recipe are left out of the dropdown.
+  // Foods already in the recipe are left out of the picker.
   const usedIds = new Set(ingredients.map((i) => i.variant_id));
   const choices = foods.filter((f) => !usedIds.has(f.variant_id));
-  const picked = foods.find((f) => f.variant_id === Number(variantId));
+  const picked = foods.find((f) => f.variant_id === variantId);
   // Only the owner can add ingredients; shared recipes are read-only.
   const canEdit = recipe ? recipe.is_own : true;
 
@@ -166,20 +169,14 @@ export default function RecipeDetailPage() {
                   <label htmlFor="ing-food">
                     Food <span className="req" aria-hidden="true">*</span>
                   </label>
-                  <select
+                  <FoodPicker
+                    key={pickerKey}
                     id="ing-food"
+                    foods={choices}
+                    selectedId={variantId}
+                    onSelect={setVariantId}
                     required
-                    aria-required="true"
-                    value={variantId}
-                    onChange={(e) => setVariantId(e.target.value)}
-                  >
-                    <option value="">Pick a food…</option>
-                    {choices.map((f) => (
-                      <option key={f.variant_id} value={f.variant_id}>
-                        {f.item_name} – {f.variant_name}
-                      </option>
-                    ))}
-                  </select>
+                  />
 
                   <label htmlFor="ing-grams">
                     Grams for the whole recipe <span className="req" aria-hidden="true">*</span>

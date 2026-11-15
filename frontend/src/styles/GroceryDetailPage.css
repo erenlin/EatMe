@@ -51,19 +51,7 @@
 .grocery-facts dd { margin: 0; text-align: right; }
 .grocery-capitalize { text-transform: capitalize; }
 
-.grocery-use { display: flex; gap: 0.5rem; }
-.grocery-use input {
-  flex: 1;
-  min-width: 0;
-  font: inherit;
-  padding: 0.6rem 0.75rem;
-  border: 1.5px solid var(--line);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--ink);
-}
-
-.grocery-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+.grocery-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
 
 .grocery button {
   font: inherit;
@@ -79,9 +67,9 @@
 .grocery button.is-secondary { background: transparent; border: 1.5px solid var(--line); color: var(--ink); }
 .grocery button.is-secondary:hover:not(:disabled) { background: var(--line); }
 /* "Throw away": a small text button, not a big filled one. */
+.grocery-throw-wrap { margin-top: 1rem; }
 .grocery button.grocery-throw {
   display: block;
-  margin-top: 1rem;
   padding: 0.25rem 0;
   font-size: 0.8rem;
   font-weight: 500;

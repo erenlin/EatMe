@@ -2,12 +2,15 @@
 // plus ways to use some of it or remove it.
 // My Groceries passes the grocery in router state so this opens instantly;
 // if you land here straight from the address bar, it loads it instead.
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
+import ConfirmButton from "../components/ConfirmButton";
 import FoodIcon from "../components/FoodIcon";
+import UseSlider from "../components/UseSlider";
 import { ApiError } from "../services/client";
 import { consumeInstance, getGrocery, type Grocery } from "../services/instances";
 import { barTone, daysLeft, freshnessPercent } from "../utils/freshness";
+import { clampUseGrams, defaultUseGrams } from "../utils/useAmount";
 import "../styles/GroceryDetailPage.css";
 
 // Turns any error into a sentence we can show on screen.
@@ -56,7 +59,8 @@ export default function GroceryDetailPage() {
   const [grocery, setGrocery] = useState<Grocery | null>(fromState);
   const [loading, setLoading] = useState(!fromState);
   const [loadError, setLoadError] = useState("");
-  const [grams, setGrams] = useState(fromState?.serving_grams ? String(fromState.serving_grams) : "");
+  // Slider value; null until the grocery is known, then it starts at one serving.
+  const [grams, setGrams] = useState<number | null>(fromState ? defaultUseGrams(fromState) : null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
   // The time the page opened. Freshness is worked out from this, so nothing
@@ -80,7 +84,7 @@ export default function GroceryDetailPage() {
           return;
         }
         setGrocery(g);
-        if (g.serving_grams > 0) setGrams(String(g.serving_grams));
+        setGrams(defaultUseGrams(g));
       })
       .catch((err: unknown) => setLoadError(messageFor(err)))
       .finally(() => setLoading(false));
@@ -107,21 +111,6 @@ export default function GroceryDetailPage() {
     }
   }
 
-  function handleUse(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!grocery) return;
-    const amount = Number(grams);
-    if (!Number.isInteger(amount) || amount < 1) {
-      setActionError("Enter how many grams you used (1 or more).");
-      return;
-    }
-    if (amount > grocery.grams_remaining) {
-      setActionError(`Only ${grocery.grams_remaining} g left.`);
-      return;
-    }
-    spend(amount);
-  }
-
   function handleUseOne() {
     if (!grocery) return;
     const serving = grocery.serving_grams > 0 ? grocery.serving_grams : grocery.grams_remaining;
@@ -131,7 +120,6 @@ export default function GroceryDetailPage() {
   // WORKAROUND: there's no delete endpoint yet, so we use up every gram left.
   function handleDelete() {
     if (!grocery) return;
-    if (!window.confirm(`Throw away the rest of your ${grocery.item_name}?`)) return;
     spend(grocery.grams_remaining);
   }
 
@@ -160,11 +148,11 @@ export default function GroceryDetailPage() {
         <GroceryInfo
           grocery={grocery}
           now={now}
-          grams={grams}
+          grams={clampUseGrams(grams ?? defaultUseGrams(grocery), grocery)}
           busy={busy}
           actionError={actionError}
           onGramsChange={setGrams}
-          onUse={handleUse}
+          onUse={spend}
           onUseOne={handleUseOne}
           onDelete={handleDelete}
         />
@@ -176,11 +164,11 @@ export default function GroceryDetailPage() {
 type InfoProps = {
   grocery: Grocery;
   now: number;
-  grams: string;
+  grams: number; // already clamped to what's left
   busy: boolean;
   actionError: string;
-  onGramsChange: (value: string) => void;
-  onUse: (e: FormEvent<HTMLFormElement>) => void;
+  onGramsChange: (grams: number) => void;
+  onUse: (grams: number) => void;
   onUseOne: () => void;
   onDelete: () => void;
 };
@@ -247,24 +235,13 @@ function GroceryInfo({
       </dl>
 
       <h2 className="grocery-heading">Use some</h2>
-      <form className="grocery-use" onSubmit={onUse} noValidate>
-        <label htmlFor="grocery-grams" className="grocery-hidden">
-          Grams used
-        </label>
-        <input
-          id="grocery-grams"
-          type="number"
-          min={1}
-          max={g.grams_remaining}
-          inputMode="numeric"
-          placeholder="grams"
-          value={grams}
-          onChange={(e) => onGramsChange(e.target.value)}
-        />
-        <button type="submit" disabled={busy}>
-          {busy ? "…" : "Use amount"}
-        </button>
-      </form>
+      <UseSlider
+        grocery={g}
+        itemName={g.item_name}
+        grams={grams}
+        disabled={busy}
+        onChange={onGramsChange}
+      />
 
       {actionError && (
         <p className="grocery-error" role="alert">
@@ -273,15 +250,27 @@ function GroceryInfo({
       )}
 
       <div className="grocery-actions">
-        <button type="button" onClick={onUseOne} disabled={busy}>
-          Use one serving
+        <button type="button" onClick={() => onUse(grams)} disabled={busy}>
+          {busy ? "…" : `Use ${grams} g`}
         </button>
+        {g.serving_grams > 0 && (
+          <button type="button" className="is-secondary" onClick={onUseOne} disabled={busy}>
+            Use one serving
+          </button>
+        )}
       </div>
 
       {/* Less important here, so it's small and sits on its own. */}
-      <button type="button" className="grocery-throw" onClick={onDelete} disabled={busy}>
-        Throw away
-      </button>
+      <div className="grocery-throw-wrap">
+        <ConfirmButton
+          label="Throw away"
+          className="grocery-throw"
+          question={`Throw away the rest of your ${g.item_name}?`}
+          confirmLabel="Yes, throw away"
+          onConfirm={onDelete}
+          disabled={busy}
+        />
+      </div>
 
       <Link className="grocery-link" to={`/dictionary/${g.item_id}/variants/${g.variant_id}`}>
         See all {g.item_name} – {g.variant_name} in the dictionary →
