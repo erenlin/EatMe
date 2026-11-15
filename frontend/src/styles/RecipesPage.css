@@ -111,10 +111,10 @@
   font: inherit;
   font-size: 0.85rem;
   font-weight: 700;
-  width: 1.8rem;
-  height: 1.8rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   border: 1.5px solid var(--line);
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   color: var(--ink);
   cursor: pointer;
