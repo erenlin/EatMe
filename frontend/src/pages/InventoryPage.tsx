@@ -207,11 +207,8 @@ function GroceryCard({ grocery, now, busy, onUse, onDelete }: CardProps) {
   const maxGrams = Math.max(1, grocery.grams_remaining);
 
   const [useGrams, setUseGrams] = useState(() => defaultUseGrams(grocery));
-
-  // Keep slider within bounds if grams_remaining shrinks after a partial use.
-  useEffect(() => {
-    setUseGrams((prev) => Math.max(1, Math.min(prev, grocery.grams_remaining)));
-  }, [grocery.grams_remaining]);
+  // Clamp to available grams at render time — no effect needed.
+  const effectiveGrams = Math.max(1, Math.min(useGrams, grocery.grams_remaining));
 
   let daysText = "no expiry set";
   let urgent = false;
@@ -225,7 +222,7 @@ function GroceryCard({ grocery, now, busy, onUse, onDelete }: CardProps) {
 
   // Slider snaps to whole-unit steps for discrete items (apples, eggs, etc.)
   const step = grocery.unit_weight_grams > 0 ? grocery.unit_weight_grams : 1;
-  const label = useAmountLabel(useGrams, grocery);
+  const label = useAmountLabel(effectiveGrams, grocery);
 
   return (
     <li className="inventory-card">
@@ -269,18 +266,18 @@ function GroceryCard({ grocery, now, busy, onUse, onDelete }: CardProps) {
           min={1}
           max={maxGrams}
           step={step}
-          value={useGrams}
+          value={effectiveGrams}
           disabled={busy}
           aria-label={`Grams to use from ${item_name}`}
           onChange={(e) => setUseGrams(Number(e.target.value))}
         />
         <span className="inventory-use-label">
-          {useGrams}g{label ? ` ${label}` : ""}
+          {effectiveGrams}g{label ? ` ${label}` : ""}
         </span>
       </div>
 
       <div className="inventory-actions">
-        <button type="button" onClick={() => onUse(useGrams)} disabled={busy}>
+        <button type="button" onClick={() => onUse(effectiveGrams)} disabled={busy}>
           {busy ? "…" : "Use"}
         </button>
         <button type="button" className="is-secondary" onClick={onDelete} disabled={busy}>
