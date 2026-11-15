@@ -1,8 +1,9 @@
 // My Groceries: everything the user has, soonest-expiring first, with freshness bars.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ApiError } from "../services/client";
 import { consumeInstance, listAllInstances, type Grocery } from "../services/instances";
+import { lookupItems } from "../services/items";
 import { barTone, daysLeft, freshnessPercent } from "../utils/freshness";
 import "../styles/InventoryPage.css";
 
@@ -31,6 +32,32 @@ export default function InventoryPage() {
   // The time the list loaded. Freshness is worked out from this, so nothing
   // reads the clock during render.
   const [loadedAt, setLoadedAt] = useState(0);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
+
+  // ---- Debounced autocomplete: call item lookup as user types ----
+  useEffect(() => {
+    const q = search.trim();
+    const id = window.setTimeout(() => {
+      if (!q) { setSuggestions([]); return; }
+      lookupItems(q)
+        .then((items) => setSuggestions(items.map((i) => i.item_name)))
+        .catch(() => setSuggestions([]));
+    }, q ? 180 : 0);
+    return () => window.clearTimeout(id);
+  }, [search]);
+
+  // Close dropdown when clicking outside the search area.
+  useEffect(() => {
+    function onPointerDown(e: PointerEvent) {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, []);
 
   // ---- Load all groceries once, when the page opens ----
   useEffect(() => {
@@ -95,17 +122,36 @@ export default function InventoryPage() {
         </Link>
       </header>
 
-      <label htmlFor="inventory-search" className="inventory-hidden">
-        Search groceries
-      </label>
-      <input
-        id="inventory-search"
-        className="inventory-search"
-        type="search"
-        placeholder="Search groceries"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      <div className="inventory-search-wrap" ref={searchWrapRef}>
+        <label htmlFor="inventory-search" className="inventory-hidden">
+          Search groceries
+        </label>
+        <input
+          id="inventory-search"
+          className="inventory-search"
+          type="search"
+          placeholder="Search groceries"
+          value={search}
+          autoComplete="off"
+          onChange={(e) => { setSearch(e.target.value); setShowSuggestions(true); }}
+          onFocus={() => { if (search.trim()) setShowSuggestions(true); }}
+        />
+        {showSuggestions && suggestions.length > 0 && (
+          <ul className="inventory-suggestions" role="listbox" aria-label="Food suggestions">
+            {suggestions.map((name) => (
+              <li
+                key={name}
+                role="option"
+                aria-selected={false}
+                className="inventory-suggestion"
+                onPointerDown={() => { setSearch(name); setShowSuggestions(false); }}
+              >
+                {name}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {actionError && (
         <p className="inventory-error" role="alert">

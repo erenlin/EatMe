@@ -56,6 +56,8 @@
 .inventory-add:hover { background: var(--mauve-dark); }
 
 /* ---------- Search ---------- */
+.inventory-search-wrap { position: relative; }
+
 .inventory-search {
   width: 100%;
   box-sizing: border-box;
@@ -66,6 +68,30 @@
   background: transparent;
   color: var(--ink);
 }
+
+.inventory-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  list-style: none;
+  margin: 0;
+  padding: 0.3rem 0;
+  background: var(--page);
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.inventory-suggestion {
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.inventory-suggestion:hover { background: var(--blush); }
 
 .inventory-add:focus-visible,
 .inventory-search:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
