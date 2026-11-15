@@ -1,0 +1,12 @@
+/* Inline "are you sure?" that replaces a destructive button in place.
+   The buttons inherit the page's own button styles; only layout lives here. */
+.confirm {
+  flex: 1 1 100%; /* takes its own line inside a row of buttons */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.confirm-text { font-size: 0.85rem; color: var(--ink); margin: 0; flex-basis: 100%; }
+.confirm button.confirm-yes { background: var(--error); color: var(--page); border: 0; }
+.confirm button.confirm-yes:hover:not(:disabled) { background: var(--error); filter: brightness(0.9); }

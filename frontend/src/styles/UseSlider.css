@@ -1,0 +1,24 @@
+/* The shared "how much did you use" slider. Colors come from theme.css. */
+.use-slider {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 0 0.4rem;
+}
+
+.use-slider-input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--mauve);
+  cursor: pointer;
+}
+.use-slider-input:disabled { opacity: 0.5; cursor: default; }
+.use-slider-input:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
+
+.use-slider-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 7rem;
+  text-align: right;
+}

@@ -137,32 +137,8 @@
 .inventory-bar-fill.is-urgent { background: var(--error); }
 .inventory-bar-fill.is-fresh { background: var(--fresh); }
 
-/* Use slider row */
-.inventory-use-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0 0 0.4rem;
-}
-
-.inventory-use-slider {
-  flex: 1;
-  accent-color: var(--mauve);
-  min-width: 0;
-  cursor: pointer;
-}
-.inventory-use-slider:disabled { opacity: 0.5; cursor: default; }
-
-.inventory-use-label {
-  font-size: 0.78rem;
-  color: var(--muted);
-  white-space: nowrap;
-  min-width: 7rem;
-  text-align: right;
-}
-
 /* "Use" and "Delete" */
-.inventory-actions { display: flex; gap: 0.5rem; }
+.inventory-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .inventory-actions button {
   font: inherit;
   font-size: 0.85rem;
