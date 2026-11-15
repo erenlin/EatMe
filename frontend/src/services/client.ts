@@ -74,6 +74,28 @@ export async function login(email: string, password: string): Promise<string> {
   return token;
 }
 
+// The values the database's gender enum accepts.
+export type Gender = "Male" | "Female" | "Others";
+
+// What POST /create needs. date_of_birth is "YYYY-MM-DD".
+export type NewAccount = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+  date_of_birth: string;
+  gender: Gender;
+};
+
+// A1: create an account. Returns the new user's id; the caller logs in afterwards.
+export function createAccount(input: NewAccount): Promise<{ id: number }> {
+  return request<{ id: number }>(ENDPOINTS.createUser, {
+    method: "POST",
+    body: input,
+    auth: false,
+  });
+}
+
 export type User = { username: string; user_id: number };
 
 export const getMe = () => request<User>(ENDPOINTS.me);

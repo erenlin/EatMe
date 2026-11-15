@@ -7,6 +7,7 @@
 //   /dictionary/:itemId                  One item's variants (B1b, B2b)
 //   /dictionary/:itemId/variants/:vid    One variant + what's in the fridge (C1)
 //   /sharing      Sharing (A4)
+// Logged out: /signup is Sign up (A1); every other address is Log in.
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router";
 import BottomNav from "./components/BottomNav";
 import { AuthProvider } from "./features/auth/AuthProvider";
@@ -20,6 +21,7 @@ import RecipeDetailPage from "./pages/RecipeDetailPage";
 import RecipesPage from "./pages/RecipesPage";
 import SettingsPage from "./pages/SettingsPage";
 import SharingPage from "./pages/SharingPage";
+import SignupPage from "./pages/SignupPage";
 import VariantDetailPage from "./pages/VariantDetailPage";
 import VariantsPage from "./pages/VariantsPage";
 
@@ -36,7 +38,15 @@ function WithNav() {
 function AppRoutes() {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (!user) return <LoginPage />; // not logged in: every address shows the login screen
+  if (!user) {
+    // Not logged in: /signup shows sign up, every other address shows the login screen.
+    return (
+      <Routes>
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="*" element={<LoginPage />} />
+      </Routes>
+    );
+  }
 
   return (
     <Routes>
