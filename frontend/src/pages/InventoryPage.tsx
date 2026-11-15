@@ -207,8 +207,12 @@ function GroceryCard({ grocery, now, busy, onUse, onDelete }: CardProps) {
   const maxGrams = Math.max(1, grocery.grams_remaining);
 
   const [useGrams, setUseGrams] = useState(() => defaultUseGrams(grocery));
+  // For discrete items, min = step so snap points align with whole units.
+  // e.g. 4 oranges at 130g each → min=130, step=130 → snaps to 130/260/390/520.
+  const step = grocery.unit_weight_grams > 0 ? grocery.unit_weight_grams : 1;
+  const sliderMin = step;
   // Clamp to available grams at render time — no effect needed.
-  const effectiveGrams = Math.max(1, Math.min(useGrams, grocery.grams_remaining));
+  const effectiveGrams = Math.max(sliderMin, Math.min(useGrams, grocery.grams_remaining));
 
   let daysText = "no expiry set";
   let urgent = false;
@@ -221,7 +225,6 @@ function GroceryCard({ grocery, now, busy, onUse, onDelete }: CardProps) {
   }
 
   // Slider snaps to whole-unit steps for discrete items (apples, eggs, etc.)
-  const step = grocery.unit_weight_grams > 0 ? grocery.unit_weight_grams : 1;
   const label = useAmountLabel(effectiveGrams, grocery);
 
   return (
@@ -263,7 +266,7 @@ function GroceryCard({ grocery, now, busy, onUse, onDelete }: CardProps) {
         <input
           type="range"
           className="inventory-use-slider"
-          min={1}
+          min={sliderMin}
           max={maxGrams}
           step={step}
           value={effectiveGrams}
