@@ -21,11 +21,11 @@ export async function listGrants(): Promise<Grant[]> {
   return data ?? [];
 }
 
-// A4b: share with another user, found by their email.
-export function shareWith(email: string): Promise<unknown> {
+// A4b: share with another user, found by their user_id.
+export function shareWith(userId: number): Promise<unknown> {
   return request("/api/grants", {
     method: "POST",
-    body: { grantee_email: email },
+    body: { grantee_user_id: userId },
   });
 }
 

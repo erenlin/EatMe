@@ -74,6 +74,6 @@ export async function login(email: string, password: string): Promise<string> {
   return token;
 }
 
-export type User = Record<string, unknown>;
+export type User = { username: string; user_id: number };
 
 export const getMe = () => request<User>(ENDPOINTS.me);

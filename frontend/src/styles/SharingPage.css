@@ -1,5 +1,18 @@
 /* Sharing page. */
-.sharing-intro { margin: -0.5rem 0 1.25rem; font-size: 0.9rem; }
+.sharing-own-id {
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+}
+.sharing-own-id strong {
+  color: var(--mauve);
+  font-size: 1rem;
+}
+
+.sharing-intro { margin: 0 0 1.25rem; font-size: 0.9rem; }
+
+.sharing-form { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+.sharing-form input { flex: 1; min-width: 0; }
 
 .sharing-heading { font-size: 1.05rem; margin: 1.75rem 0 0.25rem; }
 
@@ -16,23 +29,49 @@
   border-radius: 10px;
   background: var(--blush);
 }
-.sharing-card > div { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
-.sharing-card span { color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
 
-/* Shares that were stopped are faded out */
-.sharing-card.is-stopped { background: transparent; opacity: 0.7; }
+.sharing-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
 
+.sharing-card-id {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--mauve);
+  letter-spacing: 0.03em;
+}
+
+.sharing-card-name { font-size: 0.95rem; }
+
+.sharing-card-email,
+.sharing-card-since {
+  color: var(--muted);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+/* Red × revoke button */
 .sharing-revoke {
   flex-shrink: 0;
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding: 0.45rem 0.75rem;
-  border: 1.5px solid var(--mauve);
-  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 50%;
   background: transparent;
-  color: var(--mauve);
+  color: var(--error);
+  font-size: 1rem;
+  font-weight: 700;
   cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: background 0.15s;
 }
-.sharing-revoke:hover:not(:disabled) { background: var(--mauve); color: var(--page); }
-.sharing-revoke:disabled { opacity: 0.6; cursor: progress; }
+.sharing-revoke:hover:not(:disabled) { background: color-mix(in srgb, var(--error) 12%, transparent); }
+.sharing-revoke:disabled { opacity: 0.4; cursor: progress; }
+.sharing-revoke:focus-visible { outline: 3px solid var(--error); outline-offset: 2px; }
