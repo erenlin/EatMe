@@ -35,9 +35,11 @@ export type NewRecipe = {
 
 // D1a: the user's recipes, best match with their groceries first.
 // The backend has no name search, so the page filters this list itself.
-// It returns 50 per page; we only ask for the first page for now.
-export async function listRecipes(): Promise<Recipe[]> {
-  return (await request<Recipe[]>("/api/recipes")) ?? [];
+// It returns up to RECIPES_PAGE_SIZE per page; page starts at 1.
+export const RECIPES_PAGE_SIZE = 50;
+
+export async function listRecipes(page = 1): Promise<Recipe[]> {
+  return (await request<Recipe[]>(`/api/recipes?page=${page}`)) ?? [];
 }
 
 // D1b: add a recipe. Returns the new recipe's id.

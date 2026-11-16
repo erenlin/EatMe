@@ -3,7 +3,13 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { ApiError } from "../services/client";
-import { addRecipe, listRecipes, type IngredientLine, type Recipe } from "../services/recipes";
+import {
+  addRecipe,
+  listRecipes,
+  RECIPES_PAGE_SIZE,
+  type IngredientLine,
+  type Recipe,
+} from "../services/recipes";
 import "../styles/RecipesPage.css";
 
 const MESSAGES: Record<number, string> = {
@@ -32,7 +38,13 @@ function scaleLines(lines: IngredientLine[], multiplier: number): IngredientLine
   });
 }
 
-// Segmented coverage bar: green for full, yellow for partial, grey for missing.
+// Pages needed for the total count the backend reports (always at least 1).
+function pageCount(rows: Recipe[]): number {
+  const total = rows[0]?.total_count ?? 0;
+  return Math.max(1, Math.ceil(total / RECIPES_PAGE_SIZE));
+}
+
+// Segmented coverage bar: green for full, yellow for partial, red for missing.
 function CoverageBar({ lines }: { lines: IngredientLine[] }) {
   const total = lines.length;
   if (total === 0) return null;
@@ -71,13 +83,28 @@ export default function RecipesPage() {
   const [adding, setAdding] = useState(false);
   // Per-card multiplier keyed by recipe_id. Missing key = 1×.
   const [multipliers, setMultipliers] = useState<Record<number, number>>({});
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
-    listRecipes()
-      .then((rows) => setRecipes(rows))
-      .catch((err: unknown) => setError(messageFor(err)))
-      .finally(() => setLoading(false));
-  }, []);
+    let cancelled = false;
+    listRecipes(page)
+      .then((rows) => {
+        if (cancelled) return;
+        setRecipes(rows);
+        // An empty page past the end has no total_count; keep the last known count.
+        if (rows.length > 0 || page === 1) setTotalPages(pageCount(rows));
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(messageFor(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [page]);
 
   async function handleAdd(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -93,12 +120,19 @@ export default function RecipesPage() {
       await addRecipe({ recipe_name: name, servings });
       setNewName("");
       setNewServings("2");
-      setRecipes(await listRecipes());
+      const rows = await listRecipes(page);
+      setRecipes(rows);
+      setTotalPages(pageCount(rows));
     } catch (err) {
       setError(messageFor(err));
     } finally {
       setAdding(false);
     }
+  }
+
+  function goToPage(next: number) {
+    setLoading(true);
+    setPage(next);
   }
 
   function setMultiplier(id: number, delta: number) {
@@ -228,6 +262,32 @@ export default function RecipesPage() {
             );
           })}
         </ul>
+      )}
+
+      {!loading && (
+        <nav className="recipes-pager" aria-label="Recipe pages">
+          <button
+            type="button"
+            className="recipes-mult-btn"
+            aria-label="Previous page"
+            style={{ visibility: page > 1 ? "visible" : "hidden" }}
+            onClick={() => goToPage(Math.max(1, page - 1))}
+          >
+            ←
+          </button>
+          <span className="recipes-pager-label">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            className="recipes-mult-btn"
+            aria-label="Next page"
+            style={{ visibility: page < totalPages ? "visible" : "hidden" }}
+            onClick={() => goToPage(Math.min(totalPages, page + 1))}
+          >
+            →
+          </button>
+        </nav>
       )}
     </main>
   );
