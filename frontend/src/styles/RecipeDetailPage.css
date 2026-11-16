@@ -30,7 +30,65 @@
   border-radius: 10px;
   background: var(--blush);
 }
-.recipe-ingredient span { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.recipe-ingredient { align-items: center; }
+.recipe-ingredient-main { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.recipe-amount { color: var(--muted); font-size: 0.85rem; }
+
+/* Have enough / Have some / Missing, same colors as the bar on the Recipes list */
+.recipe-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.recipe-status i { width: 0.6rem; height: 0.6rem; border-radius: 50%; display: inline-block; }
+.recipe-status-full i { background: #5a9a6a; }
+.recipe-status-partial i { background: #c9a94a; }
+.recipe-status-none i { background: #c0504a; }
+.recipe-status-none { color: var(--error); }
+
+.recipe-welcome {
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: var(--blush);
+  border: 1.5px solid var(--mauve);
+}
+
+/* Shopping list */
+.recipe-shopping { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.35rem; }
+.recipe-shopping li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed var(--line);
+}
+.recipe-shopping .recipe-amount { white-space: nowrap; }
+.recipe-copy {
+  margin-top: 0.75rem;
+  font: inherit;
+  font-weight: 600;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border: 1.5px solid var(--mauve);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mauve);
+  cursor: pointer;
+}
+.recipe-copy:hover { background: var(--blush); }
+.recipe-copy:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
+
+/* Amount + unit side by side */
+.recipe-amount-row { display: flex; gap: 0.5rem; }
+.recipe-amount-row input { flex: 1; min-width: 0; }
+.recipe-amount-row select { flex: none; }
+.recipe-unit { align-self: center; color: var(--muted); }
+.recipe-converted { margin: 0.35rem 0 0; font-size: 0.85rem; }
 
 .recipe-instructions { white-space: pre-wrap; margin: 0; }
 

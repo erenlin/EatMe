@@ -1,7 +1,7 @@
 // Recipes for You (D1): the user's recipes, a search box, and a simple add form.
 // Tapping a recipe opens /recipes/{id} (the ingredients screen).
 import { useEffect, useState, type FormEvent } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { ApiError } from "../services/client";
 import {
   addRecipe,
@@ -11,6 +11,7 @@ import {
   type IngredientLine,
   type Recipe,
 } from "../services/recipes";
+import { scaleLines } from "../utils/recipeAmounts";
 import { loadRecipesView, saveRecipesView } from "../utils/recipesViewState";
 import "../styles/RecipesPage.css";
 
@@ -26,19 +27,6 @@ function messageFor(err: unknown): string {
 }
 
 const PHOTO_COLORS = ["#e8c7cc", "#c9d8c5", "#f1dcb5", "#c8d3e6", "#e3cfe6"];
-
-// Re-compute coverage for each ingredient line scaled to a given multiplier.
-// A multiplier of 2 means the user wants to make 2× the recipe's base servings.
-function scaleLines(lines: IngredientLine[], multiplier: number): IngredientLine[] {
-  return lines.map((l) => {
-    const needed = l.needed_grams * multiplier;
-    let status: "full" | "partial" | "none";
-    if (l.available_grams <= 0) status = "none";
-    else if (l.available_grams >= needed) status = "full";
-    else status = "partial";
-    return { ...l, needed_grams: needed, status };
-  });
-}
 
 // Pages needed for the total count the backend reports (always at least 1).
 function pageCount(rows: Recipe[]): number {
@@ -78,6 +66,7 @@ function CoverageBar({ lines }: { lines: IngredientLine[] }) {
 export default function RecipesPage() {
   // Page, search text and multipliers come back from the last visit this tab.
   const [initial] = useState(loadRecipesView);
+  const navigate = useNavigate();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -152,16 +141,12 @@ export default function RecipesPage() {
     }
     setAdding(true);
     try {
-      await addRecipe({ recipe_name: name, servings });
-      setNewName("");
-      setNewServings("2");
-      const rows = await listRecipes(page);
-      setRecipes(rows);
-      setTotalPages(pageCount(rows));
-      setAllRecipes(null); // the full list for search is out of date now
+      const { recipe_id } = await addRecipe({ recipe_name: name, servings });
+      // A new recipe has no ingredients yet, and adding them is always the next step,
+      // so go straight to it instead of leaving it somewhere in the list.
+      navigate(`/recipes/${recipe_id}`, { state: { justCreated: true } });
     } catch (err) {
       setError(messageFor(err));
-    } finally {
       setAdding(false);
     }
   }
