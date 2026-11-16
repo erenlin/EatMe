@@ -88,7 +88,7 @@ describe("FoodPicker", () => {
     await userEvent.type(box, "apple");
     await userEvent.keyboard("{ArrowDown}{Enter}");
     expect(onSelect).toHaveBeenLastCalledWith(2);
-    expect((box as HTMLInputElement).value).toBe("Apple – Fuji");
+    expect((box as HTMLInputElement).value).toBe("Apple · Fuji");
 
     await userEvent.type(box, "x");
     expect(onSelect).toHaveBeenLastCalledWith(null);
@@ -98,7 +98,7 @@ describe("FoodPicker", () => {
     const onSelect = vi.fn();
     render(<Harness onSelect={onSelect} />);
     await userEvent.type(screen.getByRole("combobox"), "pine");
-    await userEvent.click(screen.getByRole("option", { name: "Pineapple – Gold" }));
+    await userEvent.click(screen.getByRole("option", { name: "Pineapple · Gold" }));
     expect(onSelect).toHaveBeenLastCalledWith(3);
   });
 });

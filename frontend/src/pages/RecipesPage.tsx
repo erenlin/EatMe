@@ -1,15 +1,18 @@
 // Recipes for You (D1): the user's recipes, a search box, and a simple add form.
 // Tapping a recipe opens /recipes/{id} (the ingredients screen).
 import { useEffect, useState, type FormEvent } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { ApiError } from "../services/client";
 import {
   addRecipe,
+  listAllRecipes,
   listRecipes,
   RECIPES_PAGE_SIZE,
   type IngredientLine,
   type Recipe,
 } from "../services/recipes";
+import { scaleLines } from "../utils/recipeAmounts";
+import { loadRecipesView, saveRecipesView } from "../utils/recipesViewState";
 import "../styles/RecipesPage.css";
 
 const MESSAGES: Record<number, string> = {
@@ -24,19 +27,6 @@ function messageFor(err: unknown): string {
 }
 
 const PHOTO_COLORS = ["#e8c7cc", "#c9d8c5", "#f1dcb5", "#c8d3e6", "#e3cfe6"];
-
-// Re-compute coverage for each ingredient line scaled to a given multiplier.
-// A multiplier of 2 means the user wants to make 2× the recipe's base servings.
-function scaleLines(lines: IngredientLine[], multiplier: number): IngredientLine[] {
-  return lines.map((l) => {
-    const needed = l.needed_grams * multiplier;
-    let status: "full" | "partial" | "none";
-    if (l.available_grams <= 0) status = "none";
-    else if (l.available_grams >= needed) status = "full";
-    else status = "partial";
-    return { ...l, needed_grams: needed, status };
-  });
-}
 
 // Pages needed for the total count the backend reports (always at least 1).
 function pageCount(rows: Recipe[]): number {
@@ -74,26 +64,44 @@ function CoverageBar({ lines }: { lines: IngredientLine[] }) {
 }
 
 export default function RecipesPage() {
+  // Page, search text and multipliers come back from the last visit this tab.
+  const [initial] = useState(loadRecipesView);
+  const navigate = useNavigate();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initial.search);
   const [newName, setNewName] = useState("");
   const [newServings, setNewServings] = useState("2");
   const [adding, setAdding] = useState(false);
   // Per-card multiplier keyed by recipe_id. Missing key = 1×.
-  const [multipliers, setMultipliers] = useState<Record<number, number>>({});
-  const [page, setPage] = useState(1);
+  const [multipliers, setMultipliers] = useState<Record<number, number>>(initial.multipliers);
+  const [page, setPage] = useState(initial.page);
   const [totalPages, setTotalPages] = useState(1);
+  // Every recipe on every page, fetched the first time the user searches.
+  // null = not fetched yet (or thrown away after adding a recipe).
+  const [allRecipes, setAllRecipes] = useState<Recipe[] | null>(null);
+  const [searchError, setSearchError] = useState("");
+
+  const query = search.trim().toLowerCase();
+  const searching = query !== "";
+
+  useEffect(() => {
+    saveRecipesView({ page, search, multipliers });
+  }, [page, search, multipliers]);
 
   useEffect(() => {
     let cancelled = false;
     listRecipes(page)
       .then((rows) => {
         if (cancelled) return;
+        // A remembered page can be past the end if recipes were removed: go back to page 1.
+        if (rows.length === 0 && page > 1) {
+          setPage(1);
+          return;
+        }
         setRecipes(rows);
-        // An empty page past the end has no total_count; keep the last known count.
-        if (rows.length > 0 || page === 1) setTotalPages(pageCount(rows));
+        setTotalPages(pageCount(rows));
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(messageFor(err));
@@ -106,6 +114,22 @@ export default function RecipesPage() {
     };
   }, [page]);
 
+  // Search looks through every page, not just the one on screen.
+  useEffect(() => {
+    if (!searching || allRecipes !== null || searchError) return;
+    let cancelled = false;
+    listAllRecipes()
+      .then((rows) => {
+        if (!cancelled) setAllRecipes(rows);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setSearchError(messageFor(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [searching, allRecipes, searchError]);
+
   async function handleAdd(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
@@ -117,15 +141,12 @@ export default function RecipesPage() {
     }
     setAdding(true);
     try {
-      await addRecipe({ recipe_name: name, servings });
-      setNewName("");
-      setNewServings("2");
-      const rows = await listRecipes(page);
-      setRecipes(rows);
-      setTotalPages(pageCount(rows));
+      const { recipe_id } = await addRecipe({ recipe_name: name, servings });
+      // A new recipe has no ingredients yet, and adding them is always the next step,
+      // so go straight to it instead of leaving it somewhere in the list.
+      navigate(`/recipes/${recipe_id}`, { state: { justCreated: true } });
     } catch (err) {
       setError(messageFor(err));
-    } finally {
       setAdding(false);
     }
   }
@@ -143,9 +164,14 @@ export default function RecipesPage() {
     });
   }
 
-  const query = search.trim().toLowerCase();
-  const shown = query
-    ? recipes.filter((r) => r.recipe_name.toLowerCase().includes(query))
+  function handleSearch(value: string) {
+    setSearch(value);
+    setSearchError(""); // let a failed search try again on the next keystroke
+  }
+
+  const searchLoading = searching && allRecipes === null && !searchError;
+  const shown = searching
+    ? (allRecipes ?? []).filter((r) => r.recipe_name.toLowerCase().includes(query))
     : recipes;
 
   return (
@@ -161,7 +187,7 @@ export default function RecipesPage() {
         type="search"
         placeholder="Search recipes"
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => handleSearch(e.target.value)}
       />
 
       <form className="recipes-add" onSubmit={handleAdd}>
@@ -200,18 +226,34 @@ export default function RecipesPage() {
         </p>
       )}
 
-      {loading ? (
-        <p className="recipes-muted">Loading…</p>
+      {searchError && (
+        <p className="recipes-error" role="alert">
+          {searchError}
+        </p>
+      )}
+
+      {searching && !searchLoading && !searchError && shown.length > 0 && (
+        <p className="recipes-muted recipes-match-count" aria-live="polite">
+          {shown.length} {shown.length === 1 ? "match" : "matches"} in all your recipes
+        </p>
+      )}
+
+      {loading || searchLoading ? (
+        <p className="recipes-muted">{searchLoading ? "Searching all recipes…" : "Loading…"}</p>
       ) : shown.length === 0 ? (
         <div className="recipes-empty">
           <h2>No recipes found</h2>
           <p>
-            {recipes.length === 0
-              ? "Add your first recipe above."
-              : "Try searching for another recipe."}
+            {searching ? "Try searching for another recipe." : "Add your first recipe above."}
           </p>
         </div>
       ) : (
+        <>
+        <p className="recipes-legend" aria-label="Bar colors">
+          <span><i className="recipes-coverage-full" /> Have enough</span>
+          <span><i className="recipes-coverage-partial" /> Have some</span>
+          <span><i className="recipes-coverage-none" /> Missing</span>
+        </p>
         <ul className="recipes-list">
           {shown.map((r) => {
             const mult = multipliers[r.recipe_id] ?? 1;
@@ -240,21 +282,21 @@ export default function RecipesPage() {
                     <button
                       type="button"
                       className="recipes-mult-btn"
-                      aria-label="Fewer servings"
+                      aria-label="Make less"
                       disabled={mult <= 1}
                       onClick={() => setMultiplier(r.recipe_id, -1)}
                     >
-                      ←
+                      −
                     </button>
                     <span className="recipes-mult-value">{mult}×</span>
                     <button
                       type="button"
                       className="recipes-mult-btn"
-                      aria-label="More servings"
+                      aria-label="Make more"
                       disabled={mult >= 10}
                       onClick={() => setMultiplier(r.recipe_id, +1)}
                     >
-                      →
+                      +
                     </button>
                   </div>
                 )}
@@ -262,9 +304,10 @@ export default function RecipesPage() {
             );
           })}
         </ul>
+        </>
       )}
 
-      {!loading && (
+      {!loading && !searching && (
         <nav className="recipes-pager" aria-label="Recipe pages">
           <button
             type="button"

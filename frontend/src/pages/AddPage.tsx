@@ -206,15 +206,15 @@ export default function AddPage() {
   return (
     <main className="add">
       <header className="add-header">
-        <Link to="/" className="add-back" aria-label="Back to My Groceries">
+        <Link to="/" className="add-back" aria-label="Back to Groceries">
           ←
         </Link>
-        <h1 className="add-title">Add a grocery</h1>
+        <h1 className="add-title">Add groceries</h1>
       </header>
 
       <p className="add-intro">
-        Find the food you bought, choose how many, and tap <strong>Add</strong>. New food? Add it at
-        the bottom.
+        Find what you bought, choose how many, and tap <strong>Add</strong>. Bought something new?
+        Add it at the bottom.
       </p>
 
       {!showNew && (
@@ -256,7 +256,7 @@ export default function AddPage() {
                   <form className="add-row" onSubmit={(e) => handleAdd(e, food)} noValidate>
                     <div className="add-name">
                       <strong>
-                        {food.item_name} – {food.variant_name}
+                        {food.item_name} · {food.variant_name}
                       </strong>
                       <span>Kept in the {food.default_store_mode === "room" ? "pantry" : food.default_store_mode}</span>
                     </div>
@@ -293,7 +293,7 @@ export default function AddPage() {
 
           {!loading && !loadError && (
             <button type="button" className="add-new-button" onClick={openNewFood}>
-              + {search.trim() && shown.length === 0 ? `Add "${search.trim()}" as a new food` : "Add a new food"}
+              + {search.trim() && shown.length === 0 ? `Add "${search.trim()}" as a new food` : "Add a food you haven't bought before"}
             </button>
           )}
         </>
@@ -308,7 +308,7 @@ export default function AddPage() {
           </p>
 
           <label htmlFor="new-name">
-            Food name <Req />
+            What is it? <Req />
           </label>
           <input
             id="new-name"
@@ -327,7 +327,7 @@ export default function AddPage() {
           )}
 
           <label htmlFor="new-kind">
-            Kind <span className="add-optional">(optional)</span>
+            Type <span className="add-optional">(optional)</span>
           </label>
           <input
             id="new-kind"
@@ -427,7 +427,7 @@ export default function AddPage() {
               Cancel
             </button>
             <button type="submit" disabled={newSaving}>
-              {newSaving ? "Adding…" : "Add to my groceries"}
+              {newSaving ? "Adding…" : "Add to groceries"}
             </button>
           </div>
         </form>

@@ -12,6 +12,12 @@ export default function SettingsPage() {
 
       <ul className="settings-list">
         <li>
+          <Link to="/dictionary" className="settings-row">
+            <strong>Saved foods</strong>
+            <span>Foods you've added before and their types</span>
+          </Link>
+        </li>
+        <li>
           <Link to="/sharing" className="settings-row">
             <strong>Sharing</strong>
             <span>Share your groceries with someone</span>

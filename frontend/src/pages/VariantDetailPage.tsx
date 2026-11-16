@@ -14,7 +14,7 @@ import "../styles/VariantsPage.css";
 function messageFor(err: unknown): string {
   if (!(err instanceof ApiError)) return "Can't reach the server. Make sure the backend is running.";
   if (err.status === 401) return "Your login expired. Log out and log back in.";
-  if (err.status === 404) return "That variant wasn't found.";
+  if (err.status === 404) return "That type wasn't found.";
   return err.message;
 }
 
@@ -40,7 +40,7 @@ export default function VariantDetailPage() {
     if (haveAll) return;
     if (!Number.isInteger(itemId) || !Number.isInteger(variantId)) {
       Promise.resolve().then(() => {
-        setError("That variant wasn't found.");
+        setError("That type wasn't found.");
         setLoading(false);
       });
       return;
@@ -49,7 +49,7 @@ export default function VariantDetailPage() {
       .then(([variants, items]) => {
         const found = variants.find((v) => v.variant_id === variantId);
         if (!found) {
-          setError("That variant wasn't found.");
+          setError("That type wasn't found.");
           return;
         }
         setVariant(found);
@@ -70,7 +70,7 @@ export default function VariantDetailPage() {
         <p className="variants-empty">Loading…</p>
       ) : error || !variant ? (
         <p className="variants-error" role="alert">
-          {error || "That variant wasn't found."}
+          {error || "That type wasn't found."}
         </p>
       ) : (
         <>
