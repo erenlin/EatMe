@@ -157,7 +157,17 @@
 }
 .recipes-coverage-full    { background: #5a9a6a; }
 .recipes-coverage-partial { background: #c9a94a; }
-.recipes-coverage-none    { background: var(--line); }
+.recipes-coverage-none    { background: #c0504a; }
+
+/* ---------- Pagination ---------- */
+.recipes-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+.recipes-pager-label { font-size: 0.85rem; color: var(--muted); }
 
 /* ---------- Messages ---------- */
 .recipes-error { color: var(--error); font-size: 0.9rem; }
