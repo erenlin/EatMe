@@ -263,6 +263,12 @@ export default function RecipesPage() {
           </p>
         </div>
       ) : (
+        <>
+        <p className="recipes-legend" aria-label="Bar colors">
+          <span><i className="recipes-coverage-full" /> Have enough</span>
+          <span><i className="recipes-coverage-partial" /> Have some</span>
+          <span><i className="recipes-coverage-none" /> Missing</span>
+        </p>
         <ul className="recipes-list">
           {shown.map((r) => {
             const mult = multipliers[r.recipe_id] ?? 1;
@@ -291,21 +297,21 @@ export default function RecipesPage() {
                     <button
                       type="button"
                       className="recipes-mult-btn"
-                      aria-label="Fewer servings"
+                      aria-label="Make less"
                       disabled={mult <= 1}
                       onClick={() => setMultiplier(r.recipe_id, -1)}
                     >
-                      ←
+                      −
                     </button>
                     <span className="recipes-mult-value">{mult}×</span>
                     <button
                       type="button"
                       className="recipes-mult-btn"
-                      aria-label="More servings"
+                      aria-label="Make more"
                       disabled={mult >= 10}
                       onClick={() => setMultiplier(r.recipe_id, +1)}
                     >
-                      →
+                      +
                     </button>
                   </div>
                 )}
@@ -313,6 +319,7 @@ export default function RecipesPage() {
             );
           })}
         </ul>
+        </>
       )}
 
       {!loading && !searching && (

@@ -75,3 +75,14 @@
 .sharing-revoke:hover:not(:disabled) { background: color-mix(in srgb, var(--error) 12%, transparent); }
 .sharing-revoke:disabled { opacity: 0.4; cursor: progress; }
 .sharing-revoke:focus-visible { outline: 3px solid var(--error); outline-offset: 2px; }
+
+/* Back to Settings, same look as the other back links */
+.sharing-back {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  color: var(--mauve);
+  font-weight: 600;
+  text-decoration: none;
+}
+.sharing-back:hover { text-decoration: underline; }
+.sharing-back:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }

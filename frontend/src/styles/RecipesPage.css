@@ -183,3 +183,16 @@
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 .recipes-match-count { font-size: 0.8rem; margin: 0.75rem 0 0; }
+
+/* Key for the coverage bar colors, shown above the list */
+.recipes-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin: 1rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.recipes-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.recipes-legend i { display: inline-block; width: 0.9rem; height: 5px; border-radius: 3px; }
+.recipes-mult-btn { font-size: 1.1rem; }

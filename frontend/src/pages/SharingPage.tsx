@@ -1,6 +1,7 @@
 // Lets the user share their groceries with other people (A4).
 //   A4a: see who you share with   A4b: share by user ID   A4c: stop sharing
 import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router";
 import { ApiError } from "../services/client";
 import { useAuth } from "../hooks/useAuth";
 import { listGrants, revokeGrant, shareWith, type Grant } from "../services/grants";
@@ -105,6 +106,9 @@ export default function SharingPage() {
 
   return (
     <main className="pantry sharing">
+      <Link to="/settings" className="sharing-back">
+        ← Settings
+      </Link>
       <h1 className="pantry-title">Sharing</h1>
 
       {/* Show own user ID so others can share with this user */}
