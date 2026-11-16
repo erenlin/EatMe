@@ -2,7 +2,7 @@
 import type { Food } from "../services/foods";
 
 export function foodLabel(f: Food): string {
-  return `${f.item_name} – ${f.variant_name}`;
+  return `${f.item_name} · ${f.variant_name}`;
 }
 
 // Foods whose name has every typed word in it, best (starts-with) first.

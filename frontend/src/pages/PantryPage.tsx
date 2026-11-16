@@ -1,5 +1,6 @@
-// Food dictionary (/dictionary): every item you've saved. Tap one to open its
-// own page with its variants (/dictionary/:itemId).
+// Saved foods (/dictionary): every food you've saved. Tap one to open its
+// own page with its types (/dictionary/:itemId). Users see "Saved foods" and "types";
+// the code and URLs still say dictionary/item/variant.
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { ApiError } from "../services/client";
@@ -7,9 +8,9 @@ import { lookupItems, createItem, type Item } from "../services/items";
 import "../styles/PantryPage.css";
 
 const MESSAGES: Record<number, string> = {
-  400: "Please enter an item name.",
+  400: "Please enter a food name.",
   401: "Your session expired. Please log in again.",
-  409: "You already have that item.",
+  409: "You already saved that food.",
 };
 
 // Turns any error into a sentence we can show on screen.
@@ -79,14 +80,18 @@ export default function PantryPage() {
   // ---- What you see ----
   return (
     <main className="pantry">
-      <h1 className="pantry-title">Dictionary</h1>
+      <Link to="/settings" className="pantry-back">
+        ← Settings
+      </Link>
+      <h1 className="pantry-title">Saved foods</h1>
+      <p className="pantry-muted">Every food you've added before, so adding it again is quick.</p>
 
       <form className="pantry-row" onSubmit={handleSearch} role="search">
-        <label htmlFor="search" className="visually-hidden">Search the dictionary</label>
+        <label htmlFor="search" className="visually-hidden">Search saved foods</label>
         <input
           id="search"
           type="search"
-          placeholder="Search the dictionary"
+          placeholder="Search saved foods"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -94,7 +99,7 @@ export default function PantryPage() {
       </form>
 
       <form className="pantry-row" onSubmit={handleAdd}>
-        <label htmlFor="add-item" className="visually-hidden">Item name</label>
+        <label htmlFor="add-item" className="visually-hidden">Food name</label>
         <input
           id="add-item"
           type="text"
@@ -120,12 +125,12 @@ export default function PantryPage() {
           {activeSearch ? (
             <>
               <h2>No matches found!</h2>
-              <p>Try looking for another item…</p>
+              <p>Try looking for another food…</p>
             </>
           ) : (
             <>
-              <h2>Your dictionary is empty!</h2>
-              <p>Add a food above, like Apple, then give it variants.</p>
+              <h2>No saved foods yet!</h2>
+              <p>Add a food above, like Apple, then give it types like Gala or Fuji.</p>
             </>
           )}
         </div>

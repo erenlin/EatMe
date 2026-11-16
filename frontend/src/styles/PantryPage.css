@@ -114,3 +114,14 @@ a.pantry-item-button::after { content: "›"; color: var(--muted); }
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+/* Back to Settings (Saved foods lives there) */
+.pantry-back {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  color: var(--mauve);
+  font-weight: 600;
+  text-decoration: none;
+}
+.pantry-back:hover { text-decoration: underline; }
+.pantry-back:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
+.pantry-title + .pantry-muted { margin: -0.75rem 0 1.25rem; font-size: 0.9rem; }

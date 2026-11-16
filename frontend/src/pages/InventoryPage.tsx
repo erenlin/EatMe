@@ -96,7 +96,7 @@ export default function InventoryPage() {
   return (
     <main className="inventory">
       <header className="inventory-header">
-        <h1 className="inventory-title">My Groceries</h1>
+        <h1 className="inventory-title">Groceries</h1>
         <Link className="inventory-add" to="/add">
           + Add
         </Link>
@@ -192,7 +192,7 @@ function GroceryCard({ grocery, now, busy, onUse, onDelete }: CardProps) {
   let percent: number | null = null;
   if (expires_at) {
     const days = daysLeft(expires_at, now);
-    daysText = days <= 0 ? "expired" : `${days}d`;
+    daysText = days <= 0 ? "expired" : `${days} ${days === 1 ? "day" : "days"} left`;
     urgent = days <= 1;
     percent = freshnessPercent(added_at, expires_at, now);
   }
@@ -207,7 +207,7 @@ function GroceryCard({ grocery, now, busy, onUse, onDelete }: CardProps) {
         <div className="inventory-card-top">
           <div>
             <strong className="inventory-name">
-              {item_name} {unitsLeft(grocery)}x
+              {item_name} ×{unitsLeft(grocery)}
             </strong>
             <span className="inventory-variant">{variant_name}</span>
           </div>

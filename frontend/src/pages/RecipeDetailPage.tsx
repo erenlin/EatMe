@@ -163,7 +163,7 @@ export default function RecipeDetailPage() {
     return [
       {
         id: ing.ingredient_id,
-        label: `${ing.item_name} – ${ing.variant_name}`,
+        label: `${ing.item_name} · ${ing.variant_name}`,
         amount: describeGrams(short, ing),
       },
     ];
@@ -228,7 +228,7 @@ export default function RecipeDetailPage() {
                   <li key={ing.ingredient_id} className="recipe-ingredient">
                     <span className="recipe-ingredient-main">
                       <strong>
-                        {ing.item_name} – {ing.variant_name}
+                        {ing.item_name} · {ing.variant_name}
                       </strong>
                       <span className="recipe-amount">
                         {describeGrams(ing.grams * multiplier, ing)}
@@ -283,7 +283,7 @@ export default function RecipeDetailPage() {
               <h2 className="recipe-heading">Add an ingredient</h2>
               {foods.length === 0 ? (
                 <p className="recipe-muted">
-                  Save some foods in the <Link to="/dictionary">food dictionary</Link> first.
+                  Add some foods to your <Link to="/dictionary">saved foods</Link> first.
                 </p>
               ) : (
                 <form className="recipe-form" onSubmit={handleAdd} noValidate>

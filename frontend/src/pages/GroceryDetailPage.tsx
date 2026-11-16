@@ -273,7 +273,7 @@ function GroceryInfo({
       </div>
 
       <Link className="grocery-link" to={`/dictionary/${g.item_id}/variants/${g.variant_id}`}>
-        See all {g.item_name} – {g.variant_name} in the dictionary →
+        Other types of {g.item_name.toLowerCase()} you've saved →
       </Link>
     </>
   );

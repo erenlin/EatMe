@@ -1,4 +1,4 @@
-// The bar at the bottom of the main screens: Inventory, Recipes, Settings.
+// The bar at the bottom of the main screens: Groceries, Recipes, Settings.
 // NavLink highlights the tab for the screen you're on.
 import { NavLink, useLocation } from "react-router";
 import "../styles/BottomNav.css";
@@ -22,9 +22,9 @@ function Icon({ path }: { path: string }) {
 const TABS = [
   {
     to: "/",
-    label: "Inventory",
+    label: "Groceries",
     // Screens you reach from Inventory keep its tab lit.
-    also: ["/groceries", "/dictionary"],
+    also: ["/groceries"],
     // a fridge
     icon: "M7 3h10a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM6 10h12M9 6v2M9 13v3",
   },
@@ -38,7 +38,7 @@ const TABS = [
   {
     to: "/settings",
     label: "Settings",
-    also: ["/sharing"],
+    also: ["/sharing", "/dictionary"], // Saved foods lives under Settings
     // a gear
     icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
   },

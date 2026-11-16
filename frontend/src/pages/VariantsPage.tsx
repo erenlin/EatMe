@@ -48,9 +48,9 @@ function friendlyError(err: unknown): string {
     case 401:
       return "Your login expired. Log out and log back in.";
     case 404:
-      return "That item wasn't found in your pantry.";
+      return "That food wasn't found in your saved foods.";
     case 409:
-      return "This item already has a variant with that name.";
+      return "This food already has a type with that name.";
     default:
       return err.message;
   }
@@ -117,7 +117,7 @@ export default function VariantsPage() {
     setFormError("");
 
     if (!name.trim()) {
-      setFormError("Give the variant a name, like Gala or Fuji.");
+      setFormError("Give the type a name, like Gala or Fuji.");
       return;
     }
     const weightNum = Number(weight);
@@ -160,15 +160,15 @@ export default function VariantsPage() {
   return (
     <main className="variants">
       <Link to="/dictionary" className="variants-back">
-        ← Dictionary
+        ← Saved foods
       </Link>
-      <h1>{itemName || "Item"}</h1>
-      <p className="variants-sub">Kinds of {itemName || "this item"} in your dictionary</p>
+      <h1>{itemName || "Food"}</h1>
+      <p className="variants-sub">Types of {itemName ? itemName.toLowerCase() : "this food"} you've saved</p>
 
       {/* B1b: search and list */}
       <form className="variants-search" onSubmit={handleSearch}>
         <label htmlFor="variant-search" className="sr-only">
-          Search variants
+          Search types
         </label>
         <input
           id="variant-search"
@@ -187,7 +187,7 @@ export default function VariantsPage() {
       )}
 
       {variants.length === 0 && !listError ? (
-        <p className="variants-empty">No variants yet. Add one below.</p>
+        <p className="variants-empty">No types yet. Add one below.</p>
       ) : (
         <ul className="variants-list">
           {variants.map((v) => (
@@ -212,7 +212,7 @@ export default function VariantsPage() {
 
       {/* B2b: add a variant */}
       <details className="variants-add">
-      <summary>+ Add a variant</summary>
+      <summary>+ Add a type{itemName ? ` of ${itemName.toLowerCase()}` : ""}</summary>
       <form className="variants-form" onSubmit={handleAdd} noValidate>
         <p className="required-note">
           <span className="req" aria-hidden="true">*</span> Required
