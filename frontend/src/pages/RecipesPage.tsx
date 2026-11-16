@@ -5,11 +5,13 @@ import { Link } from "react-router";
 import { ApiError } from "../services/client";
 import {
   addRecipe,
+  listAllRecipes,
   listRecipes,
   RECIPES_PAGE_SIZE,
   type IngredientLine,
   type Recipe,
 } from "../services/recipes";
+import { loadRecipesView, saveRecipesView } from "../utils/recipesViewState";
 import "../styles/RecipesPage.css";
 
 const MESSAGES: Record<number, string> = {
@@ -74,26 +76,43 @@ function CoverageBar({ lines }: { lines: IngredientLine[] }) {
 }
 
 export default function RecipesPage() {
+  // Page, search text and multipliers come back from the last visit this tab.
+  const [initial] = useState(loadRecipesView);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initial.search);
   const [newName, setNewName] = useState("");
   const [newServings, setNewServings] = useState("2");
   const [adding, setAdding] = useState(false);
   // Per-card multiplier keyed by recipe_id. Missing key = 1×.
-  const [multipliers, setMultipliers] = useState<Record<number, number>>({});
-  const [page, setPage] = useState(1);
+  const [multipliers, setMultipliers] = useState<Record<number, number>>(initial.multipliers);
+  const [page, setPage] = useState(initial.page);
   const [totalPages, setTotalPages] = useState(1);
+  // Every recipe on every page, fetched the first time the user searches.
+  // null = not fetched yet (or thrown away after adding a recipe).
+  const [allRecipes, setAllRecipes] = useState<Recipe[] | null>(null);
+  const [searchError, setSearchError] = useState("");
+
+  const query = search.trim().toLowerCase();
+  const searching = query !== "";
+
+  useEffect(() => {
+    saveRecipesView({ page, search, multipliers });
+  }, [page, search, multipliers]);
 
   useEffect(() => {
     let cancelled = false;
     listRecipes(page)
       .then((rows) => {
         if (cancelled) return;
+        // A remembered page can be past the end if recipes were removed: go back to page 1.
+        if (rows.length === 0 && page > 1) {
+          setPage(1);
+          return;
+        }
         setRecipes(rows);
-        // An empty page past the end has no total_count; keep the last known count.
-        if (rows.length > 0 || page === 1) setTotalPages(pageCount(rows));
+        setTotalPages(pageCount(rows));
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(messageFor(err));
@@ -105,6 +124,22 @@ export default function RecipesPage() {
       cancelled = true;
     };
   }, [page]);
+
+  // Search looks through every page, not just the one on screen.
+  useEffect(() => {
+    if (!searching || allRecipes !== null || searchError) return;
+    let cancelled = false;
+    listAllRecipes()
+      .then((rows) => {
+        if (!cancelled) setAllRecipes(rows);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setSearchError(messageFor(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [searching, allRecipes, searchError]);
 
   async function handleAdd(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -123,6 +158,7 @@ export default function RecipesPage() {
       const rows = await listRecipes(page);
       setRecipes(rows);
       setTotalPages(pageCount(rows));
+      setAllRecipes(null); // the full list for search is out of date now
     } catch (err) {
       setError(messageFor(err));
     } finally {
@@ -143,9 +179,14 @@ export default function RecipesPage() {
     });
   }
 
-  const query = search.trim().toLowerCase();
-  const shown = query
-    ? recipes.filter((r) => r.recipe_name.toLowerCase().includes(query))
+  function handleSearch(value: string) {
+    setSearch(value);
+    setSearchError(""); // let a failed search try again on the next keystroke
+  }
+
+  const searchLoading = searching && allRecipes === null && !searchError;
+  const shown = searching
+    ? (allRecipes ?? []).filter((r) => r.recipe_name.toLowerCase().includes(query))
     : recipes;
 
   return (
@@ -161,7 +202,7 @@ export default function RecipesPage() {
         type="search"
         placeholder="Search recipes"
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => handleSearch(e.target.value)}
       />
 
       <form className="recipes-add" onSubmit={handleAdd}>
@@ -200,15 +241,25 @@ export default function RecipesPage() {
         </p>
       )}
 
-      {loading ? (
-        <p className="recipes-muted">Loading…</p>
+      {searchError && (
+        <p className="recipes-error" role="alert">
+          {searchError}
+        </p>
+      )}
+
+      {searching && !searchLoading && !searchError && shown.length > 0 && (
+        <p className="recipes-muted recipes-match-count" aria-live="polite">
+          {shown.length} {shown.length === 1 ? "match" : "matches"} in all your recipes
+        </p>
+      )}
+
+      {loading || searchLoading ? (
+        <p className="recipes-muted">{searchLoading ? "Searching all recipes…" : "Loading…"}</p>
       ) : shown.length === 0 ? (
         <div className="recipes-empty">
           <h2>No recipes found</h2>
           <p>
-            {recipes.length === 0
-              ? "Add your first recipe above."
-              : "Try searching for another recipe."}
+            {searching ? "Try searching for another recipe." : "Add your first recipe above."}
           </p>
         </div>
       ) : (
@@ -264,7 +315,7 @@ export default function RecipesPage() {
         </ul>
       )}
 
-      {!loading && (
+      {!loading && !searching && (
         <nav className="recipes-pager" aria-label="Recipe pages">
           <button
             type="button"

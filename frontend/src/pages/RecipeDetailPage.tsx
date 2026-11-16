@@ -5,7 +5,7 @@ import FoodPicker from "../components/FoodPicker";
 import { ApiError } from "../services/client";
 import { loadAllFoods, type Food } from "../services/foods";
 import { addIngredient, listIngredients, type Ingredient } from "../services/ingredients";
-import { listRecipes, type Recipe } from "../services/recipes";
+import { listAllRecipes, type Recipe } from "../services/recipes";
 import "../styles/RecipeDetailPage.css";
 
 // Turns any error into a sentence we can show on screen.
@@ -59,7 +59,8 @@ export default function RecipeDetailPage() {
       });
       return;
     }
-    Promise.all([listRecipes(), listIngredients(recipeId), loadAllFoods()])
+    // The recipe may be on any page of the list, so look through all of them.
+    Promise.all([listAllRecipes(), listIngredients(recipeId), loadAllFoods()])
       .then(([recipes, rows, allFoods]) => {
         setRecipe(recipes.find((r) => r.recipe_id === recipeId) ?? null);
         setIngredients(rows);

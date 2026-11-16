@@ -42,6 +42,23 @@ export async function listRecipes(page = 1): Promise<Recipe[]> {
   return (await request<Recipe[]>(`/api/recipes?page=${page}`)) ?? [];
 }
 
+// Stop fetching after this many pages so a huge account can't flood the backend.
+const MAX_SEARCH_PAGES = 20;
+
+// Every recipe across all pages, in the backend's order. Used by search, since the
+// backend has no name search. Fetches page 1, then the rest in parallel.
+export async function listAllRecipes(): Promise<Recipe[]> {
+  const first = await listRecipes(1);
+  const total = first[0]?.total_count ?? 0;
+  const pages = Math.min(MAX_SEARCH_PAGES, Math.ceil(total / RECIPES_PAGE_SIZE));
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, pages - 1) }, (_, i) => listRecipes(i + 2)),
+  );
+  // A recipe added mid-fetch can shift rows between pages; drop the repeats.
+  const seen = new Set<number>();
+  return [first, ...rest].flat().filter((r) => !seen.has(r.recipe_id) && seen.add(r.recipe_id));
+}
+
 // D1b: add a recipe. Returns the new recipe's id.
 export async function addRecipe(input: NewRecipe): Promise<{ recipe_id: number }> {
   return request<{ recipe_id: number }>("/api/recipes", { method: "POST", body: input });
