@@ -1,4 +1,5 @@
-// My Groceries: everything the user has, soonest-expiring first, with freshness bars.
+// Groceries: everything the user has, soonest-expiring first, with freshness bars,
+// grouped by expiry (default), where it's kept, or food. Searching shows one flat list.
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ApiError } from "../services/client";
@@ -8,6 +9,16 @@ import ConfirmButton from "../components/ConfirmButton";
 import UseSlider from "../components/UseSlider";
 import { clampUseGrams, defaultUseGrams } from "../utils/useAmount";
 import { barTone, daysLeft, freshnessPercent } from "../utils/freshness";
+import {
+  GROUP_BY_OPTIONS,
+  groupByExpiry,
+  groupByFood,
+  groupByWhere,
+  loadGroupBy,
+  saveGroupBy,
+  type GroupBy,
+  type Section,
+} from "../utils/groceryGroups";
 import "../styles/InventoryPage.css";
 
 function messageFor(err: unknown): string {
@@ -22,6 +33,17 @@ function unitsLeft(g: Grocery): number {
   return g.quantity;
 }
 
+// "3 days left" / "expired" / "no expiry set", whether it's urgent, and the bar's fill.
+function freshness(g: Grocery, now: number) {
+  if (!g.expires_at) return { daysText: "no expiry set", urgent: false, percent: null };
+  const days = daysLeft(g.expires_at, now);
+  return {
+    daysText: days <= 0 ? "expired" : `${days} ${days === 1 ? "day" : "days"} left`,
+    urgent: days <= 1,
+    percent: freshnessPercent(g.added_at, g.expires_at, now),
+  };
+}
+
 export default function InventoryPage() {
   const [groceries, setGroceries] = useState<Grocery[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +54,13 @@ export default function InventoryPage() {
   const [loadedAt, setLoadedAt] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [groupBy, setGroupByState] = useState<GroupBy>(loadGroupBy);
   const searchWrapRef = useRef<HTMLDivElement>(null);
+
+  function setGroupBy(next: GroupBy) {
+    setGroupByState(next);
+    saveGroupBy(next);
+  }
 
   useEffect(() => {
     const q = search.trim();
@@ -93,6 +121,27 @@ export default function InventoryPage() {
       )
     : groceries;
 
+  // Searching shows one flat list of matches; otherwise the chosen grouping.
+  const searching = query !== "";
+  const sections: Section<Grocery>[] = searching
+    ? []
+    : groupBy === "where"
+      ? groupByWhere(groceries)
+      : groupBy === "food"
+        ? groupByFood(groceries)
+        : groupByExpiry(groceries, loadedAt);
+
+  const card = (g: Grocery) => (
+    <GroceryCard
+      key={g.instance_id}
+      grocery={g}
+      now={loadedAt}
+      busy={busyId === g.instance_id}
+      onUse={(grams) => spendGrams(g, grams)}
+      onDelete={() => spendGrams(g, g.grams_remaining)}
+    />
+  );
+
   return (
     <main className="inventory">
       <header className="inventory-header">
@@ -150,26 +199,97 @@ export default function InventoryPage() {
           <h2>Your fridge is empty!</h2>
           <p>Add your first grocery and we'll remind you before it goes bad.</p>
         </div>
-      ) : shown.length === 0 ? (
-        <div className="inventory-empty">
-          <h2>No matches found!</h2>
-          <p>Try searching for another grocery.</p>
-        </div>
+      ) : searching ? (
+        shown.length === 0 ? (
+          <div className="inventory-empty">
+            <h2>No matches found!</h2>
+            <p>Try searching for another grocery.</p>
+          </div>
+        ) : (
+          <ul className="inventory-list">{shown.map(card)}</ul>
+        )
       ) : (
-        <ul className="inventory-list">
-          {shown.map((g) => (
-            <GroceryCard
-              key={g.instance_id}
-              grocery={g}
-              now={loadedAt}
-              busy={busyId === g.instance_id}
-              onUse={(grams) => spendGrams(g, grams)}
-              onDelete={() => spendGrams(g, g.grams_remaining)}
-            />
+        <>
+          <div className="inventory-groupby">
+            <span id="groupby-label" className="inventory-groupby-label">
+              Group by
+            </span>
+            <div className="inventory-segments" role="group" aria-labelledby="groupby-label">
+              {GROUP_BY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className="inventory-segment"
+                  aria-pressed={groupBy === opt.id}
+                  onClick={() => setGroupBy(opt.id)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {sections.map((s) => (
+            <section key={s.key} className="inventory-section" aria-labelledby={`sec-${s.key}`}>
+              {groupBy === "food" ? (
+                <FoodCard id={`sec-${s.key}`} section={s} now={loadedAt} />
+              ) : (
+                <>
+                  <h2 id={`sec-${s.key}`} className="inventory-section-title">
+                    {s.title} · {s.items.length}
+                  </h2>
+                  {s.items.length === 0 ? (
+                    <p className="inventory-muted inventory-section-empty">{s.emptyText}</p>
+                  ) : (
+                    <ul className="inventory-list">{s.items.map(card)}</ul>
+                  )}
+                </>
+              )}
+            </section>
           ))}
-        </ul>
+        </>
       )}
     </main>
+  );
+}
+
+// Food view: one card per food with a row for each of its groceries.
+// Rows open the grocery's details page, which is where Use and Delete live.
+function FoodCard({ id, section, now }: { id: string; section: Section<Grocery>; now: number }) {
+  const total = section.items.reduce((sum, g) => sum + unitsLeft(g), 0);
+  const types = new Set(section.items.map((g) => g.variant_name.toLowerCase())).size;
+  return (
+    <div className="inventory-food">
+      <div className="inventory-food-top">
+        <h2 id={id} className="inventory-food-name">
+          {section.title}
+        </h2>
+        <span className="inventory-muted">
+          {total} total{types > 1 ? ` · ${types} types` : ""}
+        </span>
+      </div>
+      <ul className="inventory-food-rows">
+        {section.items.map((g) => {
+          const f = freshness(g, now);
+          return (
+            <li key={g.instance_id}>
+              <Link
+                className="inventory-food-row"
+                to={`/groceries/${g.instance_id}`}
+                state={{ grocery: g }}
+              >
+                <span>
+                  {g.variant_name} ×{unitsLeft(g)}
+                </span>
+                <span className={f.urgent ? "inventory-days is-urgent" : "inventory-days"}>
+                  {f.daysText} <span aria-hidden="true">›</span>
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -182,20 +302,12 @@ type CardProps = {
 };
 
 function GroceryCard({ grocery, now, busy, onUse, onDelete }: CardProps) {
-  const { item_name, variant_name, added_at, expires_at } = grocery;
+  const { item_name, variant_name } = grocery;
   const [useGrams, setUseGrams] = useState(() => defaultUseGrams(grocery));
   // Clamp to available grams at render time — no effect needed.
   const effectiveGrams = clampUseGrams(useGrams, grocery);
 
-  let daysText = "no expiry set";
-  let urgent = false;
-  let percent: number | null = null;
-  if (expires_at) {
-    const days = daysLeft(expires_at, now);
-    daysText = days <= 0 ? "expired" : `${days} ${days === 1 ? "day" : "days"} left`;
-    urgent = days <= 1;
-    percent = freshnessPercent(added_at, expires_at, now);
-  }
+  const { daysText, urgent, percent } = freshness(grocery, now);
 
   return (
     <li className="inventory-card">

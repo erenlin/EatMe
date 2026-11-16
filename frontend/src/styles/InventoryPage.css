@@ -184,3 +184,84 @@
 }
 .inventory-card-link:hover .inventory-name { text-decoration: underline; }
 .inventory-card-link:focus-visible { outline: 3px solid var(--mauve); outline-offset: 4px; }
+
+/* ---------- Group by switch ---------- */
+/* Label above the buttons so all three fit on one line on a phone */
+.inventory-groupby {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 1rem 0 0.25rem;
+}
+.inventory-groupby-label { font-size: 0.8rem; color: var(--muted); }
+.inventory-segments {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--blush);
+}
+.inventory-segment {
+  flex: 1;
+  min-height: 2.5rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.inventory-segment[aria-pressed="true"] {
+  background: var(--page);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.inventory-segment:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
+
+/* ---------- Sections ---------- */
+.inventory-section { margin-top: 1.25rem; }
+.inventory-section .inventory-list { margin-top: 0.6rem; }
+.inventory-section-title {
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+.inventory-section-empty { margin: 0.4rem 0 0; font-size: 0.85rem; }
+
+/* Food view: one card per food, a row per type */
+.inventory-food {
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--blush);
+  padding: 0.85rem 1rem 0.25rem;
+}
+.inventory-food-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.5rem;
+}
+.inventory-food-top .inventory-muted { font-size: 0.8rem; }
+.inventory-food-name { font-family: inherit; font-size: 1.05rem; font-weight: 700; margin: 0; }
+.inventory-food-rows { list-style: none; margin: 0; padding: 0; }
+.inventory-food-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3rem;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.inventory-food-row:hover span:first-child { text-decoration: underline; }
+.inventory-food-row:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
