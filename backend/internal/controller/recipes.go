@@ -40,7 +40,7 @@ func boolParam(r *http.Request, name string) (bool, error) {
 }
 
 // List returns one page of the logged-in user's recipes, ranked by inventory coverage.
-// Query params (all optional): include_shared, shared, weighted (true/false), page (1 or more).
+// Query params (all optional): include_shared, shared (true/false), page and multiplier (1 or more).
 // The user id comes from the token, never the request.
 func (c *RecipeController) List(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(userIDKey).(int)
@@ -51,13 +51,12 @@ func (c *RecipeController) List(w http.ResponseWriter, r *http.Request) {
 
 	includeShared, err1 := boolParam(r, "include_shared")
 	shared, err2 := boolParam(r, "shared")
-	weighted, err3 := boolParam(r, "weighted")
-	if err1 != nil || err2 != nil || err3 != nil {
-		http.Error(w, "include_shared, shared and weighted must be true or false", http.StatusBadRequest)
+	if err1 != nil || err2 != nil {
+		http.Error(w, "include_shared and shared must be true or false", http.StatusBadRequest)
 		return
 	}
 
-	page := 1
+	page, multiplier := 1, 1
 	if v := r.URL.Query().Get("page"); v != "" {
 		p, err := strconv.Atoi(v)
 		if err != nil || p < 1 {
@@ -66,8 +65,16 @@ func (c *RecipeController) List(w http.ResponseWriter, r *http.Request) {
 		}
 		page = p
 	}
+	if v := r.URL.Query().Get("multiplier"); v != "" {
+		m, err := strconv.Atoi(v)
+		if err != nil || m < 1 {
+			http.Error(w, "multiplier must be 1 or more", http.StatusBadRequest)
+			return
+		}
+		multiplier = m
+	}
 
-	recipes, err := c.store.GetRecipes(r.Context(), userID, includeShared, shared, weighted, page)
+	recipes, err := c.store.GetRecipes(r.Context(), userID, includeShared, shared, page, multiplier)
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrInvalidInput):

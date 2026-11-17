@@ -1,4 +1,3 @@
-
 package store
 
 import (
@@ -67,7 +66,6 @@ func (s *Store) AddInstance(
 	return instance, err
 }
 
-
 // UseInstanceParams contains the inputs for consuming inventory.
 type UseInstanceParams struct {
 	UserID     int
@@ -110,4 +108,3 @@ func (s *Store) UseInstance(
 
 	return result, err
 }
-

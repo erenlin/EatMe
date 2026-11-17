@@ -1,4 +1,3 @@
-
 package controller
 
 import (
@@ -130,7 +129,6 @@ func (c *InstanceController) AddInstance(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(instance)
 }
-
 
 type UseInstanceRequest struct {
 	InstanceID int `json:"instance_id"`

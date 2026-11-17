@@ -1,13 +1,12 @@
 package controller
 
 import (
+	"eatme/internal/store"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"strconv"
-
-	"eatme/internal/store"
 )
 
 type GrantController struct {

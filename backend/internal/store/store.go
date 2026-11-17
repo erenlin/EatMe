@@ -79,7 +79,7 @@ type Recipe struct {
 	Servings        int             `json:"servings"`
 	Instructions    *string         `json:"instructions"`
 	IngredientCount int             `json:"ingredient_count"`
-	IngredientLines json.RawMessage `json:"ingredient_lines"` // [{name, status, needed_grams, available_grams}]
+	IngredientLines json.RawMessage `json:"ingredient_lines"`
 	CoverageScore   *float32        `json:"coverage_score"`
 	CreatedAt       time.Time       `json:"created_at"`
 	TotalCount      int             `json:"total_count"`
@@ -471,17 +471,18 @@ func mapInstanceErr(err error) error {
 }
 
 // GetRecipes returns one page (50 rows) of recipes, in the order the DB returns them.
-func (s *Store) GetRecipes(ctx context.Context, userID int, includeShared, shared, weighted bool, page int) ([]Recipe, error) {
+func (s *Store) GetRecipes(ctx context.Context, userID int, includeShared, shared bool, page, multiplier int) ([]Recipe, error) {
 	rows, err := s.pool.Query(ctx, `
 		select recipe_id, user_id, owner_name, is_own, recipe_name, servings,
-		       instructions, ingredient_count, ingredient_lines, coverage_score, created_at, total_count
+		       instructions, ingredient_count, ingredient_lines, coverage_score,
+		       created_at, total_count
 		from kitchen.usp_recipe_get(
 			$1,
 			p_include_shared := $2,
 			p_shared := $3,
-			p_weighted := $4,
-			p_page := $5)`,
-		userID, includeShared, shared, weighted, page)
+			p_page := $4,
+			p_multiplier := $5)`,
+		userID, includeShared, shared, page, multiplier)
 	if err != nil {
 		return nil, mapRecipeErr(err)
 	}
