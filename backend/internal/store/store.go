@@ -141,7 +141,7 @@ func (s *Store) FetchUser(ctx context.Context, email string) (int, string, error
 	var id int
 	var hash string
 	err := s.pool.QueryRow(ctx,
-		`select returned_user_id, returned_password_hash from usp_fetch_user($1)`,
+		`select returned_user_id, returned_password_hash from kitchen.usp_fetch_user($1)`,
 		email,
 	).Scan(&id, &hash)
 	if errors.Is(err, pgx.ErrNoRows) {
