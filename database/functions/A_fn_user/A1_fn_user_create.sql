@@ -95,16 +95,4 @@ end;
 $$ language plpgsql;
 
 
-select * from usp_new_user (
-    rarg_first_name     => 'Test',
-    rarg_last_name      => 'User',
-
-    rarg_email          => 'test@example.com',
-    rarg_password_hash  => crypt('password123', gen_salt('bf', 13)),
-
-    arg_phone_number    => null,
-    rarg_date_of_birth  => '2000-01-01',
-    rarg_user_gender    => 'Male'
-);
-
 --  ================================================= END OF FILE ==================================================  --

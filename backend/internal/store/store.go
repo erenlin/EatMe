@@ -121,6 +121,23 @@ func NewStore(ctx context.Context, databaseURL string) (*Store, error) {
 		pool.Close()
 		return nil, err
 	}
+
+	// Catch incorrect database names or missing initialization early.
+	var schemaReady bool
+	err = pool.QueryRow(ctx,
+		"SELECT to_regclass('kitchen.users') IS NOT NULL",
+	).Scan(&schemaReady)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+	if !schemaReady {
+		pool.Close()
+		return nil, errors.New(
+			"EatMe schema missing: kitchen.users not found; check DATABASE_URL or follow docs/LOCAL_DATABASE_SETUP.md",
+		)
+	}
+
 	return &Store{pool: pool}, nil
 }
 
@@ -141,7 +158,7 @@ func (s *Store) FetchUser(ctx context.Context, email string) (int, string, error
 	var id int
 	var hash string
 	err := s.pool.QueryRow(ctx,
-		`select returned_user_id, returned_password_hash from usp_fetch_user($1)`,
+		`select returned_user_id, returned_password_hash from kitchen.usp_fetch_user($1)`,
 		email,
 	).Scan(&id, &hash)
 	if errors.Is(err, pgx.ErrNoRows) {
