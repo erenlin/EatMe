@@ -180,6 +180,10 @@ The shared managed database uses SSL, so retain `sslmode=require` when connectin
 
 The repository includes `backend/.env.example` for local development. Copy it to `backend/.env` and generate a unique JWT secret as described in the local setup guide.
 
+### Reviewer database troubleshooting
+
+Some reviewers received `defaultdb` instead of `testdb`, causing missing `kitchen` schema errors (#53, #58, #63). Confirm the correct database with its owner, or use the [local Docker setup](docs/LOCAL_DATABASE_SETUP.md). Never initialize the shared database yourself.
+
 ### Optional: Verify Database Access
 
 The PostgreSQL command-line client can help verify that your connection details work.
