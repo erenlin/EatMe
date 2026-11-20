@@ -160,3 +160,39 @@ test("ignores an outdated shared inventory response", async () => {
 
   expect(screen.queryByText("Shared by Old Owner (#6)")).toBeNull();
 });
+
+test("falls back to the user ID when an owner has no valid name", async () => {
+  vi.mocked(listSharedInstances).mockResolvedValueOnce([{
+    instance_id: 99,
+    user_id: 17,
+    variant_id: 40,
+    owner_name: "null null",
+    item_name: "Apple",
+    variant_name: "Regular",
+    quantity: 1,
+    unit_weight_grams: 150,
+    store_mode: "fridge",
+    total_grams: 150,
+    grams_remaining: 150,
+    added_at: "2026-11-20T00:00:00Z",
+    expires_at: null,
+  }]);
+
+  const user = userEvent.setup();
+
+  render(
+    <MemoryRouter>
+      <InventoryPage />
+    </MemoryRouter>,
+  );
+
+  await user.click(
+    screen.getByRole("button", { name: "Shared with me" }),
+  );
+
+  expect(
+    await screen.findByText("Shared by user #17"),
+  ).toBeTruthy();
+
+  expect(screen.queryByText(/null null/)).toBeNull();
+});

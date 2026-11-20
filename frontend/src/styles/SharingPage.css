@@ -53,28 +53,35 @@
   overflow-wrap: anywhere;
 }
 
-/* Red × revoke button */
-.sharing-revoke {
-  flex-shrink: 0;
+/* Sharing permission checkbox for each person */
+.sharing-toggle {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--error);
-  font-size: 1rem;
-  font-weight: 700;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  min-width: 4.5rem;
   cursor: pointer;
-  line-height: 1;
-  padding: 0;
-  transition: background 0.15s;
 }
-.sharing-revoke:hover:not(:disabled) { background: color-mix(in srgb, var(--error) 12%, transparent); }
-.sharing-revoke:disabled { opacity: 0.4; cursor: progress; }
-.sharing-revoke:focus-visible { outline: 3px solid var(--error); outline-offset: 2px; }
+
+.sharing-checkbox {
+  width: 1.4rem;
+  height: 1.4rem;
+  margin: 0;
+  accent-color: var(--mauve);
+  cursor: pointer;
+}
+
+.sharing-checkbox:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.sharing-toggle-state {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
 
 /* Back to Settings, same look as the other back links */
 .sharing-back {

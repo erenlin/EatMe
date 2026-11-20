@@ -47,7 +47,8 @@ export default function SharingPage() {
   const [formError, setFormError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const [revokingId, setRevokingId] = useState<number | null>(null);
+  const [togglingUserId, setTogglingUserId] = useState<number | null>(null);
+  const [togglingTo, setTogglingTo] = useState(false);
 
   function loadGrants() {
     return listGrants()
@@ -87,22 +88,42 @@ export default function SharingPage() {
     }
   }
 
-  async function handleRevoke(grant: Grant) {
+  async function handleToggle(grant: Grant, checked: boolean) {
+    if (togglingUserId !== null) return;
+
+    setTogglingUserId(grant.grantee_user_id);
+    setTogglingTo(checked);
     setFormError("");
     setSuccess("");
-    setRevokingId(grant.grant_id);
+
     try {
-      await revokeGrant(grant.grant_id);
-      setSuccess(`Stopped sharing with ${grant.grantee_first_name}.`);
+      if (checked) {
+        await shareWith(grant.grantee_user_id);
+      } else {
+        await revokeGrant(grant.grant_id);
+      }
+
       await loadGrants();
+      setSuccess(
+        checked
+          ? `Now sharing with ${grant.grantee_first_name}.`
+          : `Stopped sharing with ${grant.grantee_first_name}.`,
+      );
     } catch (err) {
-      setFormError(revokeError(err));
+      setFormError(checked ? shareError(err) : revokeError(err));
     } finally {
-      setRevokingId(null);
+      setTogglingUserId(null);
     }
   }
 
-  const active = grants.filter((g) => g.is_active);
+  // The API returns active grants first, then revoked history.
+  // Keep the first record for each person so previous shares don't duplicate.
+  const people = grants.filter(
+    (g, index) =>
+      grants.findIndex(
+        (other) => other.grantee_user_id === g.grantee_user_id,
+      ) === index,
+  );
 
   return (
     <main className="pantry sharing">
@@ -120,7 +141,7 @@ export default function SharingPage() {
 
       <p className="pantry-muted sharing-intro">
         Share your groceries by entering another person's user ID.
-        They can see and use your groceries until you stop sharing.
+        Use the checkboxes below to control who can see your groceries.
       </p>
 
       {/* A4b: share with someone by user ID */}
@@ -140,7 +161,7 @@ export default function SharingPage() {
           value={userIdInput}
           onChange={(e) => setUserIdInput(e.target.value)}
         />
-        <button type="submit" disabled={sharing}>
+        <button type="submit" disabled={sharing || togglingUserId !== null}>
           {sharing ? "Sharing…" : "Share"}
         </button>
       </form>
@@ -156,8 +177,7 @@ export default function SharingPage() {
         </p>
       )}
 
-      {/* A4a: active shares only */}
-      <h2 className="sharing-heading">Sharing with</h2>
+      <h2 className="sharing-heading">Sharing access</h2>
       {listError && (
         <p className="pantry-error" role="alert">
           {listError}
@@ -166,11 +186,11 @@ export default function SharingPage() {
 
       {loading ? (
         <p className="pantry-muted">Loading…</p>
-      ) : active.length === 0 ? (
-        <p className="pantry-muted">You're not sharing with anyone yet.</p>
+      ) : listError ? null : people.length === 0 ? (
+        <p className="pantry-muted">You haven't shared with anyone yet.</p>
       ) : (
         <ul className="pantry-list">
-          {active.map((g) => {
+          {people.map((g) => {
             const days = daysSince(g.granted_at);
             const daysLabel = days === 0 ? "Today" : days === 1 ? "1 day ago" : `${days} days ago`;
             return (
@@ -181,18 +201,31 @@ export default function SharingPage() {
                     {g.grantee_first_name} {g.grantee_last_name}
                   </strong>
                   <span className="sharing-card-email">{g.grantee_email}</span>
-                  <span className="sharing-card-since">{daysLabel}</span>
+                  <span className="sharing-card-since">
+                    {g.is_active ? daysLabel : "Not sharing"}
+                  </span>
                 </div>
-                {/* A4c: stop sharing */}
-                <button
-                  type="button"
-                  className="sharing-revoke"
-                  aria-label={`Stop sharing with ${g.grantee_first_name}`}
-                  disabled={revokingId === g.grant_id}
-                  onClick={() => handleRevoke(g)}
-                >
-                  {revokingId === g.grant_id ? "…" : "✕"}
-                </button>
+                <label className="sharing-toggle">
+                  <input
+                    type="checkbox"
+                    className="sharing-checkbox"
+                    aria-label={`Share groceries with ${g.grantee_first_name} ${g.grantee_last_name}`}
+                    checked={
+                      togglingUserId === g.grantee_user_id
+                        ? togglingTo
+                        : g.is_active
+                    }
+                    disabled={togglingUserId !== null || sharing}
+                    onChange={(e) => {
+                      void handleToggle(g, e.target.checked);
+                    }}
+                  />
+                  <span className="sharing-toggle-state">
+                    {togglingUserId === g.grantee_user_id
+                      ? "Updating…"
+                      : g.is_active ? "On" : "Off"}
+                  </span>
+                </label>
               </li>
             );
           })}

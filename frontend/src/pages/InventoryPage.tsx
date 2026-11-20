@@ -22,6 +22,18 @@ function unitsLeft(g: Grocery | SharedInstance): number {
   return g.quantity;
 }
 
+function sharedOwnerLabel(g: SharedInstance): string {
+  const name = typeof g.owner_name === "string"
+    ? g.owner_name.trim()
+    : "";
+
+  if (!name || /^(null|undefined)(\s+(null|undefined))*$/i.test(name)) {
+    return `Shared by user #${g.user_id}`;
+  }
+
+  return `Shared by ${name} (#${g.user_id})`;
+}
+
 export default function InventoryPage() {
   const [groceries, setGroceries] = useState<Grocery[]>([]);
   const [loading, setLoading] = useState(true);
@@ -190,7 +202,7 @@ export default function InventoryPage() {
                       </span>
                     </div>
                     <span className="inventory-shared-source">
-                      Shared by {g.owner_name} (#{g.user_id})
+                      {sharedOwnerLabel(g)}
                     </span>
                   </li>
                 );
