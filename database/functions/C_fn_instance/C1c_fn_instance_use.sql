@@ -16,7 +16,8 @@ set search_path = kitchen, public;
 create or replace function usp_instance_use (
     p_user_id           int,
     p_instance_id       int,
-    p_grams             int
+    p_grams             int,
+    p_reason            consumption
 )
     returns table
 (
@@ -60,6 +61,11 @@ begin
     if p_grams is null or p_grams <= 0 then
         raise exception '% %: grams used must be greater than 0 g', action_name, tabled_name
             using errcode = 'check_violation', detail = 'grams';
+    end if;
+
+    if p_reason is null or p_reason not in ('consumed', 'discarded') then
+        raise exception 'invalid consumption reason'
+            using errcode = 'check_violation', detail = 'reason';
     end if;
 
     -- Step 02: Access check through the variant: the user owns it, or the owner has an active grant to the user.
@@ -112,11 +118,11 @@ begin
             using errcode = 'check_violation', detail = 'grams';
     end if;
 
-    -- Step 05: Record the use; reason is left to its 'consumed' default
+    -- Step 05: Record the use with its actual reason
     insert into
-        item_consumption (instance_id, user_id, grams)
+        item_consumption (instance_id, user_id, grams, reason)
     values
-        (p_instance_id, p_user_id, p_grams)
+        (p_instance_id, p_user_id, p_grams, p_reason)
     returning
         item_consumption.id,
         item_consumption.reason
@@ -150,6 +156,31 @@ begin
                         v_consumed_grams                  as grams_consumed,
                         v_total_grams - v_consumed_grams  as grams_remaining;
 end;
+$$;
+
+-- Preserve existing three-argument calls.
+-- They continue to record ordinary consumption.
+create or replace function usp_instance_use (
+    p_user_id int,
+    p_instance_id int,
+    p_grams int
+)
+returns table (
+    consumption_id int,
+    instance_id int,
+    owner_user_id int,
+    grams_used int,
+    grams_consumed int,
+    grams_remaining int
+)
+language sql
+volatile
+set search_path = kitchen, public
+as $$
+    select * from kitchen.usp_instance_use(
+        p_user_id, p_instance_id, p_grams,
+        'consumed'::kitchen.consumption
+    );
 $$;
 
 --  ================================================= END OF FILE ==================================================  --

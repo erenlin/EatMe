@@ -71,6 +71,7 @@ type UseInstanceParams struct {
 	UserID     int
 	InstanceID int
 	Grams      int
+	Reason     string
 }
 
 // UsedInstance represents the result of consuming inventory.
@@ -93,10 +94,11 @@ func (s *Store) UseInstance(
 	err := s.pool.QueryRow(ctx,
 		`SELECT consumption_id, instance_id, owner_user_id,
 		        grams_used, grams_consumed, grams_remaining
-		 FROM kitchen.usp_instance_use($1, $2, $3)`,
+		 FROM kitchen.usp_instance_use($1, $2, $3, $4::kitchen.consumption)`,
 		params.UserID,
 		params.InstanceID,
 		params.Grams,
+		params.Reason,
 	).Scan(
 		&result.ConsumptionID,
 		&result.InstanceID,
