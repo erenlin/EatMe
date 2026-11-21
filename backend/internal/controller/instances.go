@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -13,12 +14,27 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+type instanceLookupReader interface {
+	LookupInstances(
+		ctx context.Context,
+		userID int,
+		query string,
+		shared bool,
+		variantID *int,
+		includeExpired bool,
+	) ([]store.LookupInstance, error)
+}
+
 type InstanceController struct {
-	store *store.Store
+	store        *store.Store
+	lookupReader instanceLookupReader
 }
 
 func NewInstanceController(s *store.Store) *InstanceController {
-	return &InstanceController{store: s}
+	return &InstanceController{
+		store:        s,
+		lookupReader: s,
+	}
 }
 
 type AddInstanceRequest struct {
@@ -247,5 +263,94 @@ func (c *InstanceController) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(instances)
+}
+
+// Lookup searches pantry instances available to the authenticated user.
+func (c *InstanceController) Lookup(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(userIDKey).(int)
+	if !ok || userID <= 0 {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	params := r.URL.Query()
+
+	query := params.Get("query")
+
+	shared := false
+	if values, exists := params["shared"]; exists {
+		if len(values) != 1 {
+			http.Error(w, "invalid shared parameter", http.StatusBadRequest)
+			return
+		}
+
+		var err error
+		shared, err = strconv.ParseBool(values[0])
+		if err != nil {
+			http.Error(w, "shared must be true or false", http.StatusBadRequest)
+			return
+		}
+	}
+
+	includeExpired := false
+	if values, exists := params["include_expired"]; exists {
+		if len(values) != 1 {
+			http.Error(w, "invalid include_expired parameter", http.StatusBadRequest)
+			return
+		}
+
+		var err error
+		includeExpired, err = strconv.ParseBool(values[0])
+		if err != nil {
+			http.Error(w, "include_expired must be true or false", http.StatusBadRequest)
+			return
+		}
+	}
+
+	var variantID *int
+
+	if values, exists := params["variant_id"]; exists {
+		if len(values) != 1 {
+			http.Error(w, "invalid variant_id", http.StatusBadRequest)
+			return
+		}
+
+		id, err := strconv.ParseInt(values[0], 10, 32)
+		if err != nil || id <= 0 {
+			http.Error(w, "invalid variant_id", http.StatusBadRequest)
+			return
+		}
+
+		value := int(id)
+		variantID = &value
+	}
+
+	instances, err := c.lookupReader.LookupInstances(
+		r.Context(),
+		userID,
+		query,
+		shared,
+		variantID,
+		includeExpired,
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+
+		if errors.As(err, &pgErr) {
+			switch pgErr.Code {
+			case "22P02", "22003":
+				http.Error(w, "invalid lookup parameters", http.StatusBadRequest)
+				return
+			}
+		}
+
+		log.Printf("instance lookup failed: %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(instances)
 }
