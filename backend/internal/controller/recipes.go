@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -16,6 +17,10 @@ type AddRecipeRequest struct {
 	RecipeName   string  `json:"recipe_name"`
 	Servings     int     `json:"servings"`
 	Instructions *string `json:"instructions"` // optional
+}
+
+type RestockRequest struct {
+	Multiplier *int `json:"multiplier"` // optional, 1 or more; default 1
 }
 
 type AddIngredientRequest struct {
@@ -291,4 +296,54 @@ func (c *RecipeController) CookRecipe(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(results)
+}
+
+// Restock registers the recipe's ingredients as open demand on the user's own variants.
+// The user id comes from the token, never the request.
+func (c *RecipeController) Restock(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(userIDKey).(int)
+	if !ok || userID == 0 {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	recipeID, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || recipeID <= 0 {
+		http.Error(w, "invalid recipe id", http.StatusBadRequest)
+		return
+	}
+
+	// The body is optional: an empty body means multiplier 1.
+	var req RestockRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	multiplier := 1
+	if req.Multiplier != nil {
+		if *req.Multiplier < 1 {
+			http.Error(w, "multiplier must be 1 or more", http.StatusBadRequest)
+			return
+		}
+		multiplier = *req.Multiplier
+	}
+
+	lines, err := c.store.RestockRecipe(r.Context(), userID, recipeID, multiplier)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrInvalidInput):
+			http.Error(w, "invalid input", http.StatusBadRequest)
+		case errors.Is(err, store.ErrSessionUserGone):
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+		case errors.Is(err, store.ErrRecipeNotFound):
+			http.Error(w, "recipe not found", http.StatusNotFound)
+		default:
+			log.Printf("restock recipe failed: %v", err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(lines)
 }

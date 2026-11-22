@@ -13,6 +13,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// RestockLine is one row from usp_recipe_restock.
+type RestockLine struct {
+	RestockID   *int   `json:"restock_id"` // null when status is no_variant
+	VariantID   *int   `json:"variant_id"` // the user's own variant, null when none
+	ItemName    string `json:"item_name"`
+	VariantName string `json:"variant_name"`
+	GramsNeeded int64  `json:"grams_needed"`
+	GramsOnHand int64  `json:"grams_on_hand"`
+	Status      string `json:"status"` // added | no_variant
+}
+
 type Grant struct {
 	ID               int        `json:"grant_id"`
 	GranteeUserID    int        `json:"grantee_user_id"`
@@ -847,4 +858,45 @@ func (s *Store) AddIngredient(ctx context.Context, userID, recipeID, variantID, 
 		}
 	}
 	return id, err
+}
+
+// RestockRecipe registers the recipe's ingredient lines, scaled by multiplier, as open demand.
+// Calling it again for the same recipe replaces that recipe's open rows.
+func (s *Store) RestockRecipe(ctx context.Context, userID, recipeID, multiplier int) ([]RestockLine, error) {
+	rows, err := s.pool.Query(ctx, `
+		select restock_id, variant_id, item_name, variant_name,
+		       grams_needed, grams_on_hand, status
+		from kitchen.usp_recipe_restock($1, $2, p_multiplier := $3)`,
+		userID, recipeID, multiplier)
+	if err != nil {
+		return nil, mapRestockErr(err)
+	}
+	defer rows.Close()
+
+	out := []RestockLine{} // empty list, not nil, so JSON is [] and not null
+	for rows.Next() {
+		var l RestockLine
+		if err := rows.Scan(&l.RestockID, &l.VariantID, &l.ItemName, &l.VariantName,
+			&l.GramsNeeded, &l.GramsOnHand, &l.Status); err != nil {
+			return nil, mapRestockErr(err)
+		}
+		out = append(out, l)
+	}
+	return out, mapRestockErr(rows.Err())
+}
+
+func mapRestockErr(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23502", "23514":
+			return ErrInvalidInput
+		case "P0002":
+			if strings.Contains(pgErr.Detail, "user_id") {
+				return ErrSessionUserGone
+			}
+			return ErrRecipeNotFound // missing, or not yours and not shared
+		}
+	}
+	return err
 }
