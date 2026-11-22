@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { listSharedInstances } from "./instances";
+import { consumeInstance, listSharedInstances } from "./instances";
 import { request } from "./client";
 
 vi.mock("./client", () => ({
@@ -46,5 +46,35 @@ describe("shared inventory API", () => {
     await expect(listSharedInstances()).rejects.toThrow(
       "Server unavailable",
     );
+  });
+});
+
+describe("inventory consumption API", () => {
+  test("defaults to consumed for ordinary usage", async () => {
+    vi.mocked(request).mockResolvedValue({
+      grams_used: 25,
+      grams_remaining: 75,
+    });
+
+    await consumeInstance(1, 25);
+
+    expect(request).toHaveBeenCalledWith("/api/instances/use", {
+      method: "POST",
+      body: { instance_id: 1, grams: 25, reason: "consumed" },
+    });
+  });
+
+  test("sends discarded when throwing food away", async () => {
+    vi.mocked(request).mockResolvedValue({
+      grams_used: 75,
+      grams_remaining: 0,
+    });
+
+    await consumeInstance(1, 75, "discarded");
+
+    expect(request).toHaveBeenCalledWith("/api/instances/use", {
+      method: "POST",
+      body: { instance_id: 1, grams: 75, reason: "discarded" },
+    });
   });
 });

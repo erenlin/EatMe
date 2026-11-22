@@ -46,10 +46,16 @@ export async function addInstance(variantId: number, quantity: number): Promise<
 }
 
 // C1c: use up part of an instance, in grams
-export async function consumeInstance(instanceId: number, grams: number): Promise<UseResult> {
+export type ConsumptionReason = "consumed" | "discarded";
+
+export async function consumeInstance(
+  instanceId: number,
+  grams: number,
+  reason: ConsumptionReason = "consumed",
+): Promise<UseResult> {
   return request<UseResult>("/api/instances/use", {
     method: "POST",
-    body: { instance_id: instanceId, grams },
+    body: { instance_id: instanceId, grams, reason },
   });
 }
 
