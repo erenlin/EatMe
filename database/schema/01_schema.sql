@@ -323,7 +323,7 @@ create table if not exists nutrition (
 --    SECTION F -. LOGGING                                                                                            --
 --  ================================================================================================================  --
 
-create type log_action as enum ('insert', 'update', 'delete', 'login', 'share','revoke', 'select');
+create type log_action as enum ('insert', 'update', 'delete', 'login', 'share','revoke', 'select', 'restock');
 create type table_name as enum ('users', 'users_share', 'items', 'item_variants', 'expiry', 'item_instances', 'item_consumption', 'recipes', 'recipe_ingredients');
 
 create table if not exists logs (
