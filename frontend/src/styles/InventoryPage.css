@@ -184,3 +184,62 @@
 }
 .inventory-card-link:hover .inventory-name { text-decoration: underline; }
 .inventory-card-link:focus-visible { outline: 3px solid var(--mauve); outline-offset: 4px; }
+
+
+/* Switch between personal and shared grocery views. */
+.inventory-view-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  margin-bottom: 1rem;
+  background: var(--blush);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.inventory-view-button {
+  min-width: 0;
+  padding: 0.7rem 0.35rem;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.inventory-view-button.is-selected {
+  background: var(--mauve);
+  color: var(--page);
+}
+
+.inventory-view-button:focus-visible {
+  outline: 3px solid var(--mauve);
+  outline-offset: 2px;
+}
+
+/* Shared inventory: clearly distinguish ownership. */
+.inventory-shared-panel {
+  margin-top: 1.25rem;
+}
+
+.inventory-shared-panel h2 {
+  font-family: var(--font);
+  font-size: 1.05rem;
+  margin: 0 0 0.5rem;
+}
+
+.inventory-shared-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.inventory-shared-source {
+  color: var(--mauve);
+  font-size: 0.78rem;
+  font-weight: 600;
+}

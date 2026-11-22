@@ -6,6 +6,7 @@ Developed by Group 4 for the University of Washington's CSE 403 Software Enginee
 
 ## Documentation
 
+- **[Local Database Setup](docs/LOCAL_DATABASE_SETUP.md)** — Run EatMe locally with PostgreSQL and Docker, without access to the shared database.
 - **[User Manual](docs/USER_MANUAL.md)** — Step-by-step instructions for creating an account, managing groceries, tracking freshness, using recipes, and managing sharing permissions.
 - **[Coding Guidelines](coding-guidelines.md)** — Development conventions and guidelines for contributors.
 - **[EatMe Living Document (PDF)](https://docs.google.com/document/d/1vb92Mq4vGCpuq9xHpmhAjUwD85Nq22ePbZ-8fTMNtHc/export?format=pdf)** — Project requirements, architecture, design decisions, testing plans, and process documentation.
@@ -101,10 +102,10 @@ Before running EatMe locally, install or obtain:
 - Git
 - Node.js 22 and npm
 - Go 1.26 or newer
-- Access to a PostgreSQL database containing EatMe's required schema and functions
+- Docker Desktop or Docker Engine with Compose for local database setup, or approved access to an existing PostgreSQL database
 - Optional: `psql`, the PostgreSQL command-line client
 
-A local PostgreSQL server is not required if you have approved access to the team's shared DigitalOcean development database.
+Docker provides a local PostgreSQL server without requiring access to the team's shared DigitalOcean development database.
 
 Database access is required to run the backend and use database-dependent application features. It is not required simply to build the frontend or run frontend unit tests.
 
@@ -120,6 +121,12 @@ Run the frontend and backend in separate terminals.
 All commands below assume you begin at the repository root unless otherwise specified.
 
 ## Environment Configuration and Database Setup
+
+### Local Database (Recommended)
+
+For an isolated local PostgreSQL database, follow the [Local Database Setup Guide](docs/LOCAL_DATABASE_SETUP.md).
+
+It explains how to start PostgreSQL with Docker Compose, configure `backend/.env`, and run the application. No shared database credentials are required.
 
 ### Backend Environment Variables
 
@@ -171,7 +178,11 @@ The shared managed database uses SSL, so retain `sslmode=require` when connectin
 - Environment variables set in a terminal apply to that session. Configure them again when opening a new backend terminal.
 - Use `unset PGPASSWORD` when you no longer need the password in the current shell.
 
-The backend's configuration loader supports a local `.env` file, but the repository does not currently include a committed `.env.example` file. Using the environment variable commands above is sufficient.
+The repository includes `backend/.env.example` for local development. Copy it to `backend/.env` and generate a unique JWT secret as described in the local setup guide.
+
+### Reviewer database troubleshooting
+
+Some reviewers received `defaultdb` instead of `testdb`, causing missing `kitchen` schema errors (#53, #58, #63). Confirm the correct database with its owner, or use the [local Docker setup](docs/LOCAL_DATABASE_SETUP.md). Never initialize the shared database yourself.
 
 ### Optional: Verify Database Access
 
@@ -206,13 +217,11 @@ Database SQL source files are located in:
 
 The team's shared development database is already provisioned by the database owner.
 
-The repository does not currently provide a fully documented, automated process for provisioning a completely new database, including the required roles, permissions, schema, and functions.
+Fresh local database initialization is automated through `compose.local.yaml` and `scripts/init-local-db.sh`. The scripts install the schema and application SQL functions when Docker creates a new database volume.
 
-**Warning: Do not run `database/schema/01_schema.sql` against the shared development database.**
+The initialization scripts do not automatically rerun when an existing database volume is restarted. See the [Local Database Setup Guide](docs/LOCAL_DATABASE_SETUP.md) for reset instructions.
 
-That script begins by dropping the `kitchen` schema and could delete existing data and database objects.
-
-If a new database needs to be initialized, coordinate with the database owner before running any schema scripts.
+**Warning: Do not run `database/schema/01_schema.sql` against the shared development database.** It drops and recreates the `kitchen` schema, potentially deleting existing data.
 
 ## Build
 
@@ -527,7 +536,7 @@ EatMe is still in development, and several planned features are not yet availabl
 - **Photo identification:** Automatic identification of groceries from photos is not currently available through the interface.
 - **Expiration notifications:** The app displays expiration information, but automated expiration reminders are not currently implemented.
 - **Shelf-life estimates:** The new-food form uses general starting values rather than food-specific shelf-life recommendations. Users should review and adjust them.
-- **Database provisioning:** Fresh database initialization, including roles and permissions, is not fully automated or documented for new contributors.
+- **Database provisioning:** Docker Compose supports isolated local development; managed database environments still require approved credentials and provisioning.
 - **End-to-end validation:** Automated linting, tests, and builds are available, but complete browser-to-database workflows still require additional verification.
 
 Expiration information is intended to support grocery organization. It should not be relied upon as a guarantee that food is safe to eat.
