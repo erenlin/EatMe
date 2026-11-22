@@ -64,6 +64,6 @@ func NewRouter(cfg config.Config, dataStore *store.Store) http.Handler {
 	mux.HandleFunc("POST /recipes/{id}/ingredients", authController.RequireAuth(recipeController.AddIngredient))
 	mux.HandleFunc("POST /recipes/cook", authController.RequireAuth(recipeController.CookRecipe))
 	mux.HandleFunc("POST /recipes/{id}/restock", authController.RequireAuth(recipeController.Restock))
-
+	mux.HandleFunc("GET /restock", authController.RequireAuth(recipeController.ShoppingList))
 	return mux
 }

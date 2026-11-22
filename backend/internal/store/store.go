@@ -13,6 +13,22 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// ShoppingItem is one row from usp_restock_get.
+type ShoppingItem struct {
+	VariantID          int             `json:"variant_id"`
+	ItemName           string          `json:"item_name"`
+	VariantName        string          `json:"variant_name"`
+	TypicalWeightGrams int             `json:"typical_weight_grams"`
+	CountingMethod     string          `json:"counting_method"`
+	IconPNG            []byte          `json:"icon_png"` // null when none
+	GramsNeeded        int64           `json:"grams_needed"`
+	GramsOnHand        int64           `json:"grams_on_hand"`
+	GramsToBuy         int64           `json:"grams_to_buy"`
+	UnitsToBuy         int             `json:"units_to_buy"`
+	Recipes            json.RawMessage `json:"recipes"` // the recipes that want this variant
+	OldestCreatedAt    *time.Time      `json:"oldest_created_at"`
+}
+
 // RestockLine is one row from usp_recipe_restock.
 type RestockLine struct {
 	RestockID   *int   `json:"restock_id"` // null when status is no_variant
@@ -899,4 +915,39 @@ func mapRestockErr(err error) error {
 		}
 	}
 	return err
+}
+
+// GetShoppingList returns the user's open restock demand, one row per own variant.
+// Covered variants are left out unless includeCovered is true.
+func (s *Store) GetShoppingList(ctx context.Context, userID int, includeCovered bool) ([]ShoppingItem, error) {
+	rows, err := s.pool.Query(ctx, `
+		select variant_id, item_name, variant_name, typical_weight_grams,
+		       counting_method::text, icon_png, grams_needed, grams_on_hand,
+		       grams_to_buy, units_to_buy, recipes, oldest_created_at
+		from kitchen.usp_restock_get($1, p_include_covered := $2)`,
+		userID, includeCovered)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []ShoppingItem{} // empty list, not nil, so JSON is [] and not null
+	for rows.Next() {
+		var it ShoppingItem
+		if err := rows.Scan(&it.VariantID, &it.ItemName, &it.VariantName,
+			&it.TypicalWeightGrams, &it.CountingMethod, &it.IconPNG,
+			&it.GramsNeeded, &it.GramsOnHand, &it.GramsToBuy, &it.UnitsToBuy,
+			&it.Recipes, &it.OldestCreatedAt); err != nil {
+			return nil, err
+		}
+		if it.Recipes == nil {
+			it.Recipes = json.RawMessage("[]")
+		}
+		if it.OldestCreatedAt != nil {
+			t := it.OldestCreatedAt.UTC()
+			it.OldestCreatedAt = &t
+		}
+		out = append(out, it)
+	}
+	return out, rows.Err()
 }

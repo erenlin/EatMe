@@ -347,3 +347,30 @@ func (c *RecipeController) Restock(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(lines)
 }
+
+// ShoppingList returns the logged-in user's restock list. Use ?include_covered=true to
+// also list variants whose stock already covers their demand.
+// The user id comes from the token, never the request.
+func (c *RecipeController) ShoppingList(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(userIDKey).(int)
+	if !ok || userID == 0 {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	includeCovered, err := boolParam(r, "include_covered")
+	if err != nil {
+		http.Error(w, "include_covered must be true or false", http.StatusBadRequest)
+		return
+	}
+
+	items, err := c.store.GetShoppingList(r.Context(), userID, includeCovered)
+	if err != nil {
+		log.Printf("get shopping list failed: %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(items)
+}
