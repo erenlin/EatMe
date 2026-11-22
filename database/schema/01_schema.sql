@@ -320,11 +320,53 @@ create table if not exists nutrition (
 
 
 --  ================================================================================================================  --
---    SECTION F -. LOGGING                                                                                            --
+--    SECTION F -. RESTOCK                                                                                            --
+--  ================================================================================================================  --
+
+create table if not exists restock (
+    id              integer         generated always as identity primary key,
+    user_id         integer         not null,
+    variant_id      integer         not null,
+
+    -- Why it is on the list; null when added by hand
+    recipe_id       integer         default null,
+    multiplier      smallint        not null default 1 check (multiplier > 0),
+
+    -- Grams the line needs, already scaled by multiplier
+    grams_needed    bigint          not null check (grams_needed > 0),
+
+    created_at      timestamptz     not null default now(),
+    resolved_at     timestamptz     default null,
+
+    -- The variant must be the user's own
+    constraint fk_restock_variant
+        foreign key (variant_id, user_id)
+            references item_variants (id, user_id) on delete cascade,
+
+    constraint fk_restock_recipe
+        foreign key (recipe_id)
+            references recipe (id) on delete set null,
+
+    -- Cannot resolve before creation
+    constraint chk_restock_resolved_after_created
+        check (resolved_at is null or resolved_at >= created_at)
+);
+
+-- One open row per variant per recipe (hand-added rows share the recipe_id 0 slot)
+create unique index if not exists uq_restock_open
+    on restock (user_id, variant_id, coalesce(recipe_id, 0))
+        where resolved_at is null;
+
+create index if not exists ix_restock_user_open
+    on restock (user_id)
+        where resolved_at is null;
+
+--  ================================================================================================================  --
+--    SECTION G -. LOGGING                                                                                            --
 --  ================================================================================================================  --
 
 create type log_action as enum ('insert', 'update', 'delete', 'login', 'share','revoke', 'select');
-create type table_name as enum ('users', 'users_share', 'items', 'item_variants', 'expiry', 'item_instances','recipes', 'recipe_ingredients');
+create type table_name as enum ('users', 'users_share', 'items', 'item_variants', 'expiry', 'item_instances','item_consumption', 'recipes', 'recipe_ingredients', 'restock');
 
 create table if not exists logs (
     id              integer         generated always as identity primary key,
@@ -345,3 +387,4 @@ create index ix_logs_table_row on logs (table_name, row_id);
 create index ix_logs_logged_at on logs (logged_at);
 
 --  ================================================= END OF FILE ==================================================  --
+
