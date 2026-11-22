@@ -951,3 +951,25 @@ func (s *Store) GetShoppingList(ctx context.Context, userID int, includeCovered 
 	}
 	return out, rows.Err()
 }
+
+func (s *Store) ResolveRestock(ctx context.Context, userID int, variantID, recipeID *int) (int, error) {
+	var n int
+	err := s.pool.QueryRow(ctx,
+		`select kitchen.usp_restock_resolve(
+			$1,
+			p_variant_id := $2,
+			p_recipe_id := $3)`,
+		userID, variantID, recipeID,
+	).Scan(&n)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23502":
+			return 0, ErrInvalidInput
+		case "P0002":
+			return 0, ErrSessionUserGone // the session's user no longer exists
+		}
+	}
+	return n, err
+}

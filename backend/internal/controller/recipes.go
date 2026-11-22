@@ -13,6 +13,11 @@ import (
 	"eatme/internal/store"
 )
 
+type ResolveRestockRequest struct {
+	VariantID *int `json:"variant_id"`
+	RecipeID  *int `json:"recipe_id"`
+}
+
 type AddRecipeRequest struct {
 	RecipeName   string  `json:"recipe_name"`
 	Servings     int     `json:"servings"`
@@ -373,4 +378,43 @@ func (c *RecipeController) ShoppingList(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(items)
+}
+
+func (c *RecipeController) ResolveRestock(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(userIDKey).(int)
+	if !ok || userID == 0 {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req ResolveRestockRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if req.VariantID == nil && req.RecipeID == nil {
+		http.Error(w, "variant_id or recipe_id is required", http.StatusBadRequest)
+		return
+	}
+	if (req.VariantID != nil && *req.VariantID <= 0) || (req.RecipeID != nil && *req.RecipeID <= 0) {
+		http.Error(w, "ids must be positive", http.StatusBadRequest)
+		return
+	}
+
+	n, err := c.store.ResolveRestock(r.Context(), userID, req.VariantID, req.RecipeID)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrInvalidInput):
+			http.Error(w, "invalid input", http.StatusBadRequest)
+		case errors.Is(err, store.ErrSessionUserGone):
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+		default:
+			log.Printf("resolve restock failed: %v", err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]int{"resolved_count": n})
 }
