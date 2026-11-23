@@ -24,16 +24,19 @@ type Props = {
 
 const FORMATS = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "qr_code"];
 
+const NOT_SUPPORTED = "Barcode scanning isn't supported on this browser. Try Chrome or Safari 17+.";
+
 export default function BarcodeScanner({ onScan, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [error, setError] = useState("");
+  // Compute support at render time — not in an effect — to satisfy react-hooks/set-state-in-effect.
+  const supported = typeof BarcodeDetector !== "undefined";
+  const [cameraError, setCameraError] = useState("");
   const [ready, setReady] = useState(false); // true once the camera is live
 
+  const error = !supported ? NOT_SUPPORTED : cameraError;
+
   useEffect(() => {
-    if (typeof BarcodeDetector === "undefined") {
-      setError("Barcode scanning isn't supported on this browser. Try Chrome or Safari 17+.");
-      return;
-    }
+    if (!supported) return;
 
     let stream: MediaStream | null = null;
     let frameId: number;
@@ -48,9 +51,9 @@ export default function BarcodeScanner({ onScan, onClose }: Props) {
         if (finished) return;
         const name = err instanceof DOMException ? err.name : "";
         if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-          setError("Camera permission denied. Allow camera access in your browser settings and try again.");
+          setCameraError("Camera permission denied. Allow camera access in your browser settings and try again.");
         } else {
-          setError("Could not open the camera.");
+          setCameraError("Could not open the camera.");
         }
         return;
       }
@@ -90,7 +93,7 @@ export default function BarcodeScanner({ onScan, onClose }: Props) {
       cancelAnimationFrame(frameId);
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [onScan]);
+  }, [onScan, supported]);
 
   return (
     <div className="barcode-overlay" role="dialog" aria-modal="true" aria-label="Scan barcode">
