@@ -13,6 +13,33 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// ShoppingItem is one row from usp_restock_get.
+type ShoppingItem struct {
+	VariantID          int             `json:"variant_id"`
+	ItemName           string          `json:"item_name"`
+	VariantName        string          `json:"variant_name"`
+	TypicalWeightGrams int             `json:"typical_weight_grams"`
+	CountingMethod     string          `json:"counting_method"`
+	IconPNG            []byte          `json:"icon_png"` // null when none
+	GramsNeeded        int64           `json:"grams_needed"`
+	GramsOnHand        int64           `json:"grams_on_hand"`
+	GramsToBuy         int64           `json:"grams_to_buy"`
+	UnitsToBuy         int             `json:"units_to_buy"`
+	Recipes            json.RawMessage `json:"recipes"` // the recipes that want this variant
+	OldestCreatedAt    *time.Time      `json:"oldest_created_at"`
+}
+
+// RestockLine is one row from usp_recipe_restock.
+type RestockLine struct {
+	RestockID   *int   `json:"restock_id"` // null when status is no_variant
+	VariantID   *int   `json:"variant_id"` // the user's own variant, null when none
+	ItemName    string `json:"item_name"`
+	VariantName string `json:"variant_name"`
+	GramsNeeded int64  `json:"grams_needed"`
+	GramsOnHand int64  `json:"grams_on_hand"`
+	Status      string `json:"status"` // added | no_variant
+}
+
 type Grant struct {
 	ID               int        `json:"grant_id"`
 	GranteeUserID    int        `json:"grantee_user_id"`
@@ -847,4 +874,102 @@ func (s *Store) AddIngredient(ctx context.Context, userID, recipeID, variantID, 
 		}
 	}
 	return id, err
+}
+
+// RestockRecipe registers the recipe's ingredient lines, scaled by multiplier, as open demand.
+// Calling it again for the same recipe replaces that recipe's open rows.
+func (s *Store) RestockRecipe(ctx context.Context, userID, recipeID, multiplier int) ([]RestockLine, error) {
+	rows, err := s.pool.Query(ctx, `
+		select restock_id, variant_id, item_name, variant_name,
+		       grams_needed, grams_on_hand, status
+		from kitchen.usp_recipe_restock($1, $2, p_multiplier := $3)`,
+		userID, recipeID, multiplier)
+	if err != nil {
+		return nil, mapRestockErr(err)
+	}
+	defer rows.Close()
+
+	out := []RestockLine{} // empty list, not nil, so JSON is [] and not null
+	for rows.Next() {
+		var l RestockLine
+		if err := rows.Scan(&l.RestockID, &l.VariantID, &l.ItemName, &l.VariantName,
+			&l.GramsNeeded, &l.GramsOnHand, &l.Status); err != nil {
+			return nil, mapRestockErr(err)
+		}
+		out = append(out, l)
+	}
+	return out, mapRestockErr(rows.Err())
+}
+
+func mapRestockErr(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23502", "23514":
+			return ErrInvalidInput
+		case "P0002":
+			if strings.Contains(pgErr.Detail, "user_id") {
+				return ErrSessionUserGone
+			}
+			return ErrRecipeNotFound // missing, or not yours and not shared
+		}
+	}
+	return err
+}
+
+// GetShoppingList returns the user's open restock demand, one row per own variant.
+// Covered variants are left out unless includeCovered is true.
+func (s *Store) GetShoppingList(ctx context.Context, userID int, includeCovered bool) ([]ShoppingItem, error) {
+	rows, err := s.pool.Query(ctx, `
+		select variant_id, item_name, variant_name, typical_weight_grams,
+		       counting_method::text, icon_png, grams_needed, grams_on_hand,
+		       grams_to_buy, units_to_buy, recipes, oldest_created_at
+		from kitchen.usp_restock_get($1, p_include_covered := $2)`,
+		userID, includeCovered)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []ShoppingItem{} // empty list, not nil, so JSON is [] and not null
+	for rows.Next() {
+		var it ShoppingItem
+		if err := rows.Scan(&it.VariantID, &it.ItemName, &it.VariantName,
+			&it.TypicalWeightGrams, &it.CountingMethod, &it.IconPNG,
+			&it.GramsNeeded, &it.GramsOnHand, &it.GramsToBuy, &it.UnitsToBuy,
+			&it.Recipes, &it.OldestCreatedAt); err != nil {
+			return nil, err
+		}
+		if it.Recipes == nil {
+			it.Recipes = json.RawMessage("[]")
+		}
+		if it.OldestCreatedAt != nil {
+			t := it.OldestCreatedAt.UTC()
+			it.OldestCreatedAt = &t
+		}
+		out = append(out, it)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) ResolveRestock(ctx context.Context, userID int, variantID, recipeID *int) (int, error) {
+	var n int
+	err := s.pool.QueryRow(ctx,
+		`select kitchen.usp_restock_resolve(
+			$1,
+			p_variant_id := $2,
+			p_recipe_id := $3)`,
+		userID, variantID, recipeID,
+	).Scan(&n)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23502":
+			return 0, ErrInvalidInput
+		case "P0002":
+			return 0, ErrSessionUserGone // the session's user no longer exists
+		}
+	}
+	return n, err
 }
