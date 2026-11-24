@@ -31,7 +31,7 @@ const TABS = [
   {
     to: "/recipes",
     label: "Recipes",
-    also: [] as string[],
+    also: ["/shopping"], // the shopping list is reached from Recipes
     // a cooking pot
     icon: "M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-6zM2 10h20M9 6c0-1 1-1 1-2M14 6c0-1 1-1 1-2",
   },

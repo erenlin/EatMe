@@ -7,6 +7,7 @@
 //   /dictionary/:itemId                  One item's variants (B1b, B2b)
 //   /dictionary/:itemId/variants/:vid    One variant + what's in the fridge (C1)
 //   /sharing      Sharing (A4)
+//   /shopping     Shopping list across restocked recipes (F2, F3)
 // Logged out: /signup is Sign up (A1); every other address is Log in.
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router";
 import BottomNav from "./components/BottomNav";
@@ -21,6 +22,7 @@ import RecipeDetailPage from "./pages/RecipeDetailPage";
 import RecipesPage from "./pages/RecipesPage";
 import SettingsPage from "./pages/SettingsPage";
 import SharingPage from "./pages/SharingPage";
+import ShoppingListPage from "./pages/ShoppingListPage";
 import SignupPage from "./pages/SignupPage";
 import VariantDetailPage from "./pages/VariantDetailPage";
 import VariantsPage from "./pages/VariantsPage";
@@ -55,6 +57,7 @@ function AppRoutes() {
         <Route path="/groceries/:id" element={<GroceryDetailPage />} />
         <Route path="/recipes" element={<RecipesPage />} />
         <Route path="/recipes/:id" element={<RecipeDetailPage />} />
+        <Route path="/shopping" element={<ShoppingListPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/dictionary" element={<PantryPage />} />
         <Route path="/dictionary/:itemId" element={<VariantsPage />} />
