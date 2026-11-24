@@ -13,6 +13,33 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// ShoppingItem is one row from usp_restock_get.
+type ShoppingItem struct {
+	VariantID          int             `json:"variant_id"`
+	ItemName           string          `json:"item_name"`
+	VariantName        string          `json:"variant_name"`
+	TypicalWeightGrams int             `json:"typical_weight_grams"`
+	CountingMethod     string          `json:"counting_method"`
+	IconPNG            []byte          `json:"icon_png"` // null when none
+	GramsNeeded        int64           `json:"grams_needed"`
+	GramsOnHand        int64           `json:"grams_on_hand"`
+	GramsToBuy         int64           `json:"grams_to_buy"`
+	UnitsToBuy         int             `json:"units_to_buy"`
+	Recipes            json.RawMessage `json:"recipes"` // the recipes that want this variant
+	OldestCreatedAt    *time.Time      `json:"oldest_created_at"`
+}
+
+// RestockLine is one row from usp_recipe_restock.
+type RestockLine struct {
+	RestockID   *int   `json:"restock_id"` // null when status is no_variant
+	VariantID   *int   `json:"variant_id"` // the user's own variant, null when none
+	ItemName    string `json:"item_name"`
+	VariantName string `json:"variant_name"`
+	GramsNeeded int64  `json:"grams_needed"`
+	GramsOnHand int64  `json:"grams_on_hand"`
+	Status      string `json:"status"` // added | no_variant
+}
+
 type Grant struct {
 	ID               int        `json:"grant_id"`
 	GranteeUserID    int        `json:"grantee_user_id"`
@@ -56,6 +83,45 @@ type Instance struct {
 	ExpiresAt       *time.Time `json:"expires_at"` // null if no expiry
 }
 
+// LookupInstance is one row returned by usp_instance_lookup.
+type LookupInstance struct {
+	InstanceID      int        `json:"instance_id"`
+	VariantID       int        `json:"variant_id"`
+	OwnerUserID     int        `json:"owner_user_id"`
+	OwnerName       string     `json:"owner_name"`
+	IsOwn           bool       `json:"is_own"`
+	ItemName        string     `json:"item_name"`
+	VariantName     string     `json:"variant_name"`
+	StoreMode       string     `json:"store_mode"`
+	Quantity        int        `json:"quantity"`
+	UnitWeightGrams int        `json:"unit_weight_grams"`
+	TotalGrams      int64      `json:"total_grams"`
+	UsedGrams       int64      `json:"used_grams"`
+	RemainingGrams  int64      `json:"remaining_grams"`
+	AddedAt         time.Time  `json:"added_at"`
+	ExpiresAt       *time.Time `json:"expires_at"`
+	IsExpired       bool       `json:"is_expired"`
+}
+
+// CookLine specifies how many grams to consume from an instance.
+type CookLine struct {
+	InstanceID int `json:"instance_id"`
+	Grams      int `json:"grams"`
+}
+
+// CookResult is one row returned by usp_recipe_cook.
+type CookResult struct {
+	ConsumptionID  int       `json:"consumption_id"`
+	InstanceID     int       `json:"instance_id"`
+	VariantID      int       `json:"variant_id"`
+	OwnerUserID    int       `json:"owner_user_id"`
+	ItemName       string    `json:"item_name"`
+	VariantName    string    `json:"variant_name"`
+	GramsConsumed  int       `json:"grams_consumed"`
+	RemainingGrams int64     `json:"remaining_grams"`
+	ConsumedAt     time.Time `json:"consumed_at"`
+}
+
 // ItemVariant represents a variant returned by the database.
 type ItemVariant struct {
 	VariantID          int       `json:"variant_id"`
@@ -79,27 +145,30 @@ type Recipe struct {
 	Servings        int             `json:"servings"`
 	Instructions    *string         `json:"instructions"`
 	IngredientCount int             `json:"ingredient_count"`
-	IngredientLines json.RawMessage `json:"ingredient_lines"` // [{name, status, needed_grams, available_grams}]
+	IngredientLines json.RawMessage `json:"ingredient_lines"`
 	CoverageScore   *float32        `json:"coverage_score"`
 	CreatedAt       time.Time       `json:"created_at"`
 	TotalCount      int             `json:"total_count"`
 }
 
 var (
-	ErrUserExists      = errors.New("user already exists")
-	ErrUserNotFound    = errors.New("user not found")
-	ErrSelfGrant       = errors.New("grantee is the acting user")
-	ErrGranteeNotFound = errors.New("grantee does not exist")
-	ErrAlreadyShared   = errors.New("already shared")
-	ErrGrantNotFound   = errors.New("grant not found")
-	ErrAlreadyRevoked  = errors.New("grant already revoked")
-	ErrInvalidInput    = errors.New("invalid input")
-	ErrVariantNotFound = errors.New("variant not found")
-	ErrSessionUserGone = errors.New("session user no longer exists")
-	ErrRecipeExists    = errors.New("recipe already exists")
-	ErrRecipeNotFound  = errors.New("recipe not found")
-	ErrAlreadyInRecipe = errors.New("variant already in recipe")
-	ErrNoFreePosition  = errors.New("recipe has no free positions")
+	ErrUserExists            = errors.New("user already exists")
+	ErrUserNotFound          = errors.New("user not found")
+	ErrSelfGrant             = errors.New("grantee is the acting user")
+	ErrGranteeNotFound       = errors.New("grantee does not exist")
+	ErrAlreadyShared         = errors.New("already shared")
+	ErrGrantNotFound         = errors.New("grant not found")
+	ErrAlreadyRevoked        = errors.New("grant already revoked")
+	ErrInvalidInput          = errors.New("invalid input")
+	ErrVariantNotFound       = errors.New("variant not found")
+	ErrSessionUserGone       = errors.New("session user no longer exists")
+	ErrRecipeExists          = errors.New("recipe already exists")
+	ErrRecipeNotFound        = errors.New("recipe not found")
+	ErrAlreadyInRecipe       = errors.New("variant already in recipe")
+	ErrNoFreePosition        = errors.New("recipe has no free positions")
+	ErrInstanceNotFound      = errors.New("instance not found")
+	ErrInsufficientInventory = errors.New("insufficient or expired inventory")
+	ErrDuplicateInstance     = errors.New("duplicate instance")
 )
 
 var createUserSQL string
@@ -121,6 +190,23 @@ func NewStore(ctx context.Context, databaseURL string) (*Store, error) {
 		pool.Close()
 		return nil, err
 	}
+
+	// Catch incorrect database names or missing initialization early.
+	var schemaReady bool
+	err = pool.QueryRow(ctx,
+		"SELECT to_regclass('kitchen.users') IS NOT NULL",
+	).Scan(&schemaReady)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+	if !schemaReady {
+		pool.Close()
+		return nil, errors.New(
+			"EatMe schema missing: kitchen.users not found; check DATABASE_URL or follow docs/LOCAL_DATABASE_SETUP.md",
+		)
+	}
+
 	return &Store{pool: pool}, nil
 }
 
@@ -141,7 +227,7 @@ func (s *Store) FetchUser(ctx context.Context, email string) (int, string, error
 	var id int
 	var hash string
 	err := s.pool.QueryRow(ctx,
-		`select returned_user_id, returned_password_hash from usp_fetch_user($1)`,
+		`select returned_user_id, returned_password_hash from kitchen.usp_fetch_user($1)`,
 		email,
 	).Scan(&id, &hash)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -457,6 +543,185 @@ func (s *Store) GetInstances(ctx context.Context, userID, variantID int, include
 	return out, mapInstanceErr(rows.Err())
 }
 
+// LookupInstances searches accessible pantry instances for cooking.
+func (s *Store) LookupInstances(
+	ctx context.Context,
+	userID int,
+	query string,
+	shared bool,
+	variantID *int,
+	includeExpired bool,
+) ([]LookupInstance, error) {
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT instance_id, variant_id, owner_user_id,
+		       owner_name, is_own, item_name, variant_name,
+		       store_mode::text, quantity, unit_weight_grams,
+		       total_grams, used_grams, remaining_grams,
+		       added_at, expires_at, is_expired
+		FROM kitchen.usp_instance_lookup(
+			p_user_id := $1,
+			p_query := $2,
+			p_shared := $3,
+			p_variant_id := $4,
+			p_include_expired := $5
+		)`,
+		userID, query, shared, variantID, includeExpired,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	instances := []LookupInstance{}
+
+	for rows.Next() {
+		var instance LookupInstance
+
+		err := rows.Scan(
+			&instance.InstanceID,
+			&instance.VariantID,
+			&instance.OwnerUserID,
+			&instance.OwnerName,
+			&instance.IsOwn,
+			&instance.ItemName,
+			&instance.VariantName,
+			&instance.StoreMode,
+			&instance.Quantity,
+			&instance.UnitWeightGrams,
+			&instance.TotalGrams,
+			&instance.UsedGrams,
+			&instance.RemainingGrams,
+			&instance.AddedAt,
+			&instance.ExpiresAt,
+			&instance.IsExpired,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		instance.AddedAt = instance.AddedAt.UTC()
+
+		if instance.ExpiresAt != nil {
+			t := instance.ExpiresAt.UTC()
+			instance.ExpiresAt = &t
+		}
+
+		instances = append(instances, instance)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return instances, nil
+}
+
+// CookRecipe consumes inventory instances for a recipe.
+// PostgreSQL validates access, expiration, and available quantities.
+func (s *Store) CookRecipe(
+	ctx context.Context,
+	userID int,
+	recipeID int,
+	lines []CookLine,
+) ([]CookResult, error) {
+	if userID <= 0 || recipeID <= 0 || len(lines) == 0 {
+		return nil, ErrInvalidInput
+	}
+
+	for _, line := range lines {
+		if line.InstanceID <= 0 || line.Grams <= 0 {
+			return nil, ErrInvalidInput
+		}
+	}
+
+	payload, err := json.Marshal(lines)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.pool.Query(ctx, `
+        SELECT consumption_id, instance_id, variant_id,
+               owner_user_id, item_name, variant_name,
+               grams_consumed, remaining_grams, consumed_at
+        FROM kitchen.usp_recipe_cook(
+            p_user_id := $1,
+            p_recipe_id := $2,
+            p_lines := $3::jsonb
+        )`,
+		userID, recipeID, string(payload),
+	)
+	if err != nil {
+		return nil, mapCookErr(err)
+	}
+	defer rows.Close()
+
+	results := []CookResult{}
+
+	for rows.Next() {
+		var result CookResult
+
+		if err := rows.Scan(
+			&result.ConsumptionID,
+			&result.InstanceID,
+			&result.VariantID,
+			&result.OwnerUserID,
+			&result.ItemName,
+			&result.VariantName,
+			&result.GramsConsumed,
+			&result.RemainingGrams,
+			&result.ConsumedAt,
+		); err != nil {
+			return nil, mapCookErr(err)
+		}
+
+		result.ConsumedAt = result.ConsumedAt.UTC()
+		results = append(results, result)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, mapCookErr(err)
+	}
+
+	return results, nil
+}
+
+// mapCookErr translates database errors into domain errors.
+func mapCookErr(err error) error {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return err
+	}
+
+	switch pgErr.Code {
+	case "P0002": // no_data_found
+		switch pgErr.Detail {
+		case "user_id":
+			return ErrUserNotFound
+		case "recipe_id":
+			return ErrRecipeNotFound
+		case "instance_id":
+			return ErrInstanceNotFound
+		}
+
+	case "23505": // unique_violation
+		if pgErr.Detail == "instance_id" {
+			return ErrDuplicateInstance
+		}
+
+	case "23514": // check_violation
+		if pgErr.Detail == "grams" || pgErr.Detail == "instance_id" {
+			return ErrInsufficientInventory
+		}
+		return ErrInvalidInput
+
+	case "22023", "23502", "22P02", "22003":
+		return ErrInvalidInput
+	}
+
+	return err
+}
+
 func mapInstanceErr(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
@@ -471,17 +736,18 @@ func mapInstanceErr(err error) error {
 }
 
 // GetRecipes returns one page (50 rows) of recipes, in the order the DB returns them.
-func (s *Store) GetRecipes(ctx context.Context, userID int, includeShared, shared, weighted bool, page int) ([]Recipe, error) {
+func (s *Store) GetRecipes(ctx context.Context, userID int, includeShared, shared bool, page, multiplier int) ([]Recipe, error) {
 	rows, err := s.pool.Query(ctx, `
 		select recipe_id, user_id, owner_name, is_own, recipe_name, servings,
-		       instructions, ingredient_count, ingredient_lines, coverage_score, created_at, total_count
+		       instructions, ingredient_count, ingredient_lines, coverage_score,
+		       created_at, total_count
 		from kitchen.usp_recipe_get(
 			$1,
 			p_include_shared := $2,
 			p_shared := $3,
-			p_weighted := $4,
-			p_page := $5)`,
-		userID, includeShared, shared, weighted, page)
+			p_page := $4,
+			p_multiplier := $5)`,
+		userID, includeShared, shared, page, multiplier)
 	if err != nil {
 		return nil, mapRecipeErr(err)
 	}
@@ -608,4 +874,102 @@ func (s *Store) AddIngredient(ctx context.Context, userID, recipeID, variantID, 
 		}
 	}
 	return id, err
+}
+
+// RestockRecipe registers the recipe's ingredient lines, scaled by multiplier, as open demand.
+// Calling it again for the same recipe replaces that recipe's open rows.
+func (s *Store) RestockRecipe(ctx context.Context, userID, recipeID, multiplier int) ([]RestockLine, error) {
+	rows, err := s.pool.Query(ctx, `
+		select restock_id, variant_id, item_name, variant_name,
+		       grams_needed, grams_on_hand, status
+		from kitchen.usp_recipe_restock($1, $2, p_multiplier := $3)`,
+		userID, recipeID, multiplier)
+	if err != nil {
+		return nil, mapRestockErr(err)
+	}
+	defer rows.Close()
+
+	out := []RestockLine{} // empty list, not nil, so JSON is [] and not null
+	for rows.Next() {
+		var l RestockLine
+		if err := rows.Scan(&l.RestockID, &l.VariantID, &l.ItemName, &l.VariantName,
+			&l.GramsNeeded, &l.GramsOnHand, &l.Status); err != nil {
+			return nil, mapRestockErr(err)
+		}
+		out = append(out, l)
+	}
+	return out, mapRestockErr(rows.Err())
+}
+
+func mapRestockErr(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23502", "23514":
+			return ErrInvalidInput
+		case "P0002":
+			if strings.Contains(pgErr.Detail, "user_id") {
+				return ErrSessionUserGone
+			}
+			return ErrRecipeNotFound // missing, or not yours and not shared
+		}
+	}
+	return err
+}
+
+// GetShoppingList returns the user's open restock demand, one row per own variant.
+// Covered variants are left out unless includeCovered is true.
+func (s *Store) GetShoppingList(ctx context.Context, userID int, includeCovered bool) ([]ShoppingItem, error) {
+	rows, err := s.pool.Query(ctx, `
+		select variant_id, item_name, variant_name, typical_weight_grams,
+		       counting_method::text, icon_png, grams_needed, grams_on_hand,
+		       grams_to_buy, units_to_buy, recipes, oldest_created_at
+		from kitchen.usp_restock_get($1, p_include_covered := $2)`,
+		userID, includeCovered)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []ShoppingItem{} // empty list, not nil, so JSON is [] and not null
+	for rows.Next() {
+		var it ShoppingItem
+		if err := rows.Scan(&it.VariantID, &it.ItemName, &it.VariantName,
+			&it.TypicalWeightGrams, &it.CountingMethod, &it.IconPNG,
+			&it.GramsNeeded, &it.GramsOnHand, &it.GramsToBuy, &it.UnitsToBuy,
+			&it.Recipes, &it.OldestCreatedAt); err != nil {
+			return nil, err
+		}
+		if it.Recipes == nil {
+			it.Recipes = json.RawMessage("[]")
+		}
+		if it.OldestCreatedAt != nil {
+			t := it.OldestCreatedAt.UTC()
+			it.OldestCreatedAt = &t
+		}
+		out = append(out, it)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) ResolveRestock(ctx context.Context, userID int, variantID, recipeID *int) (int, error) {
+	var n int
+	err := s.pool.QueryRow(ctx,
+		`select kitchen.usp_restock_resolve(
+			$1,
+			p_variant_id := $2,
+			p_recipe_id := $3)`,
+		userID, variantID, recipeID,
+	).Scan(&n)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23502":
+			return 0, ErrInvalidInput
+		case "P0002":
+			return 0, ErrSessionUserGone // the session's user no longer exists
+		}
+	}
+	return n, err
 }

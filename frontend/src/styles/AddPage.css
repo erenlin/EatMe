@@ -26,7 +26,31 @@
   box-sizing: border-box;
 }
 .add input:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
-.add-search { width: 100%; }
+.add-search { flex: 1; min-width: 0; }
+
+/* Scan button sits inside the search row */
+.add-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+}
+.add-scan-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mauve);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.add-scan-btn:hover { background: var(--blush); }
+.add-scan-btn:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
 
 .add-list { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: 0.5rem; }
 .add-card {

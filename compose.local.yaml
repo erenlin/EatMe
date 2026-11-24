@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: eatme
+      POSTGRES_PASSWORD: eatme_local_dev_only
+      POSTGRES_DB: eatme_local
+    ports:
+      - "127.0.0.1:${EATME_DB_PORT:-5433}:5432"
+    volumes:
+      - eatme_local_pgdata:/var/lib/postgresql/data
+      - ./database:/app/database:ro
+      - ./scripts/init-local-db.sh:/docker-entrypoint-initdb.d/10-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eatme -d eatme_local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  eatme_local_pgdata:

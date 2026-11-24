@@ -91,12 +91,12 @@ export default function GroceryDetailPage() {
   }, [instanceId, fromState]);
 
   // ---- Use some grams; when it's all gone, go back to My Groceries ----
-  async function spend(amount: number) {
+  async function spend(amount: number, reason: "consumed" | "discarded" = "consumed") {
     if (!grocery) return;
     setActionError("");
     setBusy(true);
     try {
-      const result = await consumeInstance(grocery.instance_id, amount);
+      const result = await consumeInstance(grocery.instance_id, amount, reason);
       if (result.grams_remaining <= 0) {
         // All gone: this page has nothing left to show, so go back.
         if (cameFromApp) navigate(-1);
@@ -117,10 +117,10 @@ export default function GroceryDetailPage() {
     spend(Math.min(serving, grocery.grams_remaining));
   }
 
-  // WORKAROUND: there's no delete endpoint yet, so we use up every gram left.
+  // Record the remaining grocery quantity as discarded.
   function handleDelete() {
     if (!grocery) return;
-    spend(grocery.grams_remaining);
+    spend(grocery.grams_remaining, "discarded");
   }
 
   // ---- What you see ----

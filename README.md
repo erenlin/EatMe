@@ -1,68 +1,113 @@
-
 # EatMe
 
-EatMe is a web application for organizing groceries, tracking what is in the kitchen, and helping users use food before it expires.
+EatMe is a web application that helps users organize their groceries, track expiration dates, and use food before it goes bad. Users can record purchased groceries, manage quantities, save food types, explore recipes based on available ingredients, and manage grocery-sharing permissions.
 
-Developed by Group 4 for UW CSE 403.
+Developed by Group 4 for the University of Washington's CSE 403 Software Engineering course.
 
-## Beta Release Status
+## Documentation
 
-EatMe is in beta development. Its working grocery-management flow connects the **React frontend**, **Go backend**, and **PostgreSQL database**.
+- **[Local Database Setup](docs/LOCAL_DATABASE_SETUP.md)** — Run EatMe locally with PostgreSQL and Docker, without access to the shared database.
+- **[User Manual](docs/USER_MANUAL.md)** — Step-by-step instructions for creating an account, managing groceries, tracking freshness, using recipes, and managing sharing permissions.
+- **[Coding Guidelines](coding-guidelines.md)** — Development conventions and guidelines for contributors.
+- **[EatMe Living Document (PDF)](https://docs.google.com/document/d/1vb92Mq4vGCpuq9xHpmhAjUwD85Nq22ePbZ-8fTMNtHc/export?format=pdf)** — Project requirements, architecture, design decisions, testing plans, and process documentation.
 
-### Implemented Features
+## Project Status
 
-**Frontend**
-- Login and authenticated session handling
-- My Groceries page with item listing, search, and creation
-- Item selection: clicking a grocery item opens its variants page
-- Variants page with variant listing, search, and creation controls
+EatMe is currently in beta development. The application connects a React frontend, Go HTTP backend, and PostgreSQL database.
 
-**Backend**
-- Account registration (`POST /create`), login (`POST /login`), and authenticated user lookup (`GET /me`)
-- Item lookup and creation (`GET /items`, `POST /items`)
-- Variant lookup and creation (`GET /variants`, `POST /variants`)
-- Inventory instance listing, creation, and consumption (`GET /variants/{id}/instances`, `POST /instances`, `POST /instances/use`)
-- Sharing/grant operations (`/grants`, `POST /grants/{id}/revoke`)
-- Health check (`GET /health`)
+The features below are implemented in the current source code. Their presence does not mean every workflow has been independently verified end to end against the development database.
 
-These backend endpoints have been implemented and tested separately by the team. Not every backend feature is available as a complete user-facing workflow yet.
+### Implemented Frontend Features
 
-### Verified End-to-End Beta Use Case
+**Authentication**
+- Account registration through an in-app signup form
+- Login using email and password
+- Authenticated sessions using JWTs
+- Logout and session handling
 
-**Use case: Log in and manage grocery items.** Manually verified against the team's shared development database on November 3, 2026:
+**Grocery Management**
+- View and search current grocery inventory
+- Add previously saved foods to inventory
+- Create a new food and add its purchased quantity in one workflow
+- View grocery details, including quantities, storage location, and expiration dates
+- Track remaining quantities by recording food usage
+- Remove groceries from inventory
+- View freshness indicators based on recorded expiration information
 
-1. Create a test account through the backend's `POST /create` endpoint.
-2. Open EatMe and log in through the frontend with that account.
-3. Arrive at the **My Groceries** page.
-4. Add a grocery item such as **Apple**.
-5. See the item appear in the list.
-6. Refresh the page and verify that Apple remains.
-7. Search for **Apple** and confirm the matching item is returned.
+**Saved Foods and Types**
+- Create and search saved foods
+- Create specific types (variants) of each food
+- Configure weights, serving sizes, counting methods, storage locations, and shelf-life values
+- View inventory entries associated with a saved food type
+- Add or consume inventory from a type's detail page
 
-**Result:** The application successfully sends authenticated requests from **React → Go API → PostgreSQL** and displays persisted results in React. Refreshing and searching confirmed the item was stored in the database rather than only in frontend state.
+**Recipes**
+- Browse and search recipes
+- Create recipes with a name and serving count
+- Add saved foods as recipe ingredients
+- Compare ingredient requirements with recorded grocery quantities
+- Adjust recipe serving multipliers
+- View missing ingredients and copy a shopping list
 
-The connected variants page allows users to select an item and work with its specific types. That additional navigation is included in the beta frontend, but the manually verified end-to-end flow above is limited to authentication and item management.
+**Sharing**
+- View the current user's ID
+- Create sharing permissions using another user's ID
+- View active sharing permissions
+- Revoke existing sharing permissions
 
-**Data model:** An *item* is a category (for example, Apple), a *variant* is a specific type (Fuji), and an *instance* is an actual quantity in inventory (four Fuji apples).
+The sharing interface currently manages permissions, but the Groceries page does not yet display another user's shared inventory.
+
+### Implemented Backend Features
+
+The Go backend provides authenticated HTTP endpoints for:
+
+| Feature | Endpoints |
+| --- | --- |
+| Authentication | `POST /create`, `POST /login`, `GET /me` |
+| Saved foods | `GET /items`, `POST /items` |
+| Food types | `GET /variants`, `POST /variants` |
+| Inventory | `GET /variants/{id}/instances`, `POST /instances`, `POST /instances/use` |
+| Expiration settings | `GET`, `POST`, and `DELETE /variants/{id}/expiry` |
+| Recipes | `GET /recipes`, `POST /recipes` |
+| Recipe ingredients | `GET /recipes/{id}/ingredients`, `POST /recipes/{id}/ingredients` |
+| Sharing | `GET /grants`, `POST /grants`, `POST /grants/{id}/revoke` |
+| Health check | `GET /health` |
+
+The frontend accesses these endpoints through its `/api` proxy during local development.
+
+### Data Model
+
+EatMe distinguishes between three main grocery concepts:
+
+- **Item:** A general food category, such as Apple.
+- **Variant:** A specific type of an item, such as Fuji.
+- **Instance:** An actual quantity of a variant in a user's inventory, such as four Fuji apples.
+
+Saving an item or variant does not automatically add it to a user's inventory. An inventory instance must be created to represent a purchase.
 
 ## Technology Stack
 
 - **Frontend:** React, TypeScript, Vite
 - **Backend:** Go HTTP API
-- **Database:** PostgreSQL, hosted for development on DigitalOcean
-- **Authentication:** JWT
-- **Continuous integration:** GitHub Actions
-- **Version control and issue tracking:** GitHub
+- **Database:** PostgreSQL, hosted for team development on DigitalOcean
+- **Authentication:** JSON Web Tokens (JWT)
+- **Testing:** Vitest, React Testing Library, Go testing tools
+- **Continuous Integration:** GitHub Actions
+- **Version Control and Issue Tracking:** GitHub
 
 ## Prerequisites
+
+Before running EatMe locally, install or obtain:
 
 - Git
 - Node.js 22 and npm
 - Go 1.26 or newer
-- Access to a PostgreSQL database containing the EatMe schema and functions
+- Docker Desktop or Docker Engine with Compose for local database setup, or approved access to an existing PostgreSQL database
 - Optional: `psql`, the PostgreSQL command-line client
 
-A local PostgreSQL server is **not required** if using the team's shared DigitalOcean development database. Database access is required to run the backend, but not to run the build and unit-test commands.
+Docker provides a local PostgreSQL server without requiring access to the team's shared DigitalOcean development database.
+
+Database access is required to run the backend and use database-dependent application features. It is not required simply to build the frontend or run frontend unit tests.
 
 ## Clone the Repository
 
@@ -71,33 +116,53 @@ git clone https://github.com/erenlin/EatMe.git
 cd EatMe
 ```
 
-Run the frontend and backend commands below in **separate terminals**, each starting at the repository root unless stated otherwise.
+Run the frontend and backend in separate terminals.
+
+All commands below assume you begin at the repository root unless otherwise specified.
 
 ## Environment Configuration and Database Setup
 
-The backend reads these environment variables:
+### Local Database (Recommended)
 
-- `PORT`: backend port (default `8080`)
-- `APP_ENV`: application environment (default `development`)
-- `JWT_SECRET`: secret used to sign JWTs
-- `DATABASE_URL`: PostgreSQL connection information
-- `PGPASSWORD`: database password, read by the PostgreSQL driver when the password is not included in `DATABASE_URL`
+For an isolated local PostgreSQL database, follow the [Local Database Setup Guide](docs/LOCAL_DATABASE_SETUP.md).
 
-### Connect to the team's development database
+It explains how to start PostgreSQL with Docker Compose, configure `backend/.env`, and run the application. No shared database credentials are required.
 
-1. Obtain the approved database host, port, database name, and **your assigned database username** from the database owner.
-2. Obtain the corresponding password through an approved private channel.
-3. In the terminal you will use for the backend, enter:
+### Backend Environment Variables
+
+The backend uses the following environment variables:
+
+| Variable | Description |
+| --- | --- |
+| `PORT` | HTTP server port; defaults to `8080` |
+| `APP_ENV` | Application environment; defaults to `development` |
+| `JWT_SECRET` | Secret used to sign and validate JWTs |
+| `DATABASE_URL` | Required PostgreSQL connection information |
+| `PGPASSWORD` | PostgreSQL password, when not included in the connection string |
+
+**Important:** `DATABASE_URL` must be configured before starting the backend. The current backend does not automatically connect to a local default database when this variable is missing.
+
+The backend also supports loading variables from a local `.env` file. Existing shell environment variables take precedence over values in that file.
+
+### Connect to the Team's Development Database
+
+1. Obtain the approved database host, port, database name, and your assigned database username from the database owner.
+2. Obtain your corresponding database password through an approved private channel.
+3. In a terminal, navigate to the backend directory and configure the environment:
 
 ```bash
 cd backend
+
 export PORT=8080
 export APP_ENV=development
 export JWT_SECRET="$(openssl rand -hex 32)"
+
 export DATABASE_URL='host=<database-host> port=<database-port> user=<your-db-user> dbname=<database-name> sslmode=require'
 ```
 
-On macOS with the default **zsh** shell, enter the database password without putting it in shell history:
+Replace the placeholder values with the database connection details provided by the team. Use your assigned database account rather than another contributor's credentials.
+
+On macOS using the default zsh shell, enter the database password without placing it directly in shell history:
 
 ```bash
 read -rs 'PGPASSWORD?Database password: '
@@ -105,36 +170,58 @@ echo
 export PGPASSWORD
 ```
 
-Replace the placeholder values in `DATABASE_URL` with the connection settings provided by the team. Use **your own** database username rather than another teammate's. The shared managed database uses SSL (`sslmode=require`).
+The shared managed database uses SSL, so retain `sslmode=require` when connecting to that environment.
 
-The environment variables belong to the terminal session where they were set. Reconfigure them when opening a fresh backend terminal; use `unset PGPASSWORD` when finished. Do not commit credentials, passwords, or JWT secrets to GitHub.
+**Security notes:**
+- Never commit database passwords, connection strings containing credentials, or JWT secrets.
+- Keep credentials out of public GitHub issues, pull requests, and screenshots.
+- Environment variables set in a terminal apply to that session. Configure them again when opening a new backend terminal.
+- Use `unset PGPASSWORD` when you no longer need the password in the current shell.
 
-**Important:** If `DATABASE_URL` is unset, the backend falls back to `localhost:5432/eatme`. A `connection refused` error may simply mean no local database is running.
+The repository includes `backend/.env.example` for local development. Copy it to `backend/.env` and generate a unique JWT secret as described in the local setup guide.
 
-### Optional: verify direct database access
+### Reviewer database troubleshooting
 
-On macOS, install the PostgreSQL client if needed:
+Some reviewers received `defaultdb` instead of `testdb`, causing missing `kitchen` schema errors (#53, #58, #63). Confirm the correct database with its owner, or use the [local Docker setup](docs/LOCAL_DATABASE_SETUP.md). Never initialize the shared database yourself.
+
+### Optional: Verify Database Access
+
+The PostgreSQL command-line client can help verify that your connection details work.
+
+On macOS, install it with Homebrew if needed:
 
 ```bash
 brew install libpq
-echo 'export PATH="$(brew --prefix libpq)/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
+export PATH="$(brew --prefix libpq)/bin:$PATH"
 psql --version
 ```
 
-In a terminal with the database connection and password variables set:
+From a terminal where the database environment variables are configured, run:
 
 ```bash
 psql "$DATABASE_URL"
 ```
 
-A successful connection opens a PostgreSQL prompt. Enter `\q` to exit. `psql` is optional for running the application itself.
+A successful connection opens a PostgreSQL prompt.
 
-### Schema and initialization
+Enter `\q` to exit.
 
-The shared database is already provisioned by the database owner. SQL source lives in `database/schema/` and `database/functions/`. The repository does not yet provide a fully documented, reproducible fresh-database provisioning process, including roles and permissions; coordinate a separate database setup with the database owner.
+The `psql` client is optional and is not required to run the application itself.
 
-**Do not run `database/schema/01_schema.sql` on the shared database.** It starts by dropping the `kitchen` schema and would remove existing data.
+### Schema and Database Initialization
+
+Database SQL source files are located in:
+
+- `database/schema/`
+- `database/functions/`
+
+The team's shared development database is already provisioned by the database owner.
+
+Fresh local database initialization is automated through `compose.local.yaml` and `scripts/init-local-db.sh`. The scripts install the schema and application SQL functions when Docker creates a new database volume.
+
+The initialization scripts do not automatically rerun when an existing database volume is restarted. See the [Local Database Setup Guide](docs/LOCAL_DATABASE_SETUP.md) for reset instructions.
+
+**Warning: Do not run `database/schema/01_schema.sql` against the shared development database.** It drops and recreates the `kitchen` schema, potentially deleting existing data.
 
 ## Build
 
@@ -148,9 +235,11 @@ npm ci
 npm run build
 ```
 
+This installs frontend dependencies and runs the TypeScript and Vite production build.
+
 ### Backend
 
-From the repository root in a different terminal:
+From the repository root in a separate terminal:
 
 ```bash
 cd backend
@@ -158,25 +247,43 @@ go mod download
 go build ./...
 ```
 
+This downloads Go dependencies and compiles the backend packages.
+
+A successful build does not, by itself, verify the application's connection to the database.
+
 ## Run
 
-### Start the backend
+### Start the Backend
 
-In the **backend terminal** where the database variables have already been set:
+In the backend terminal where the database environment variables are configured, run:
 
 ```bash
 go run ./cmd/server
 ```
 
-The backend normally listens at `http://localhost:8080`. In another terminal, verify that it responds:
+The backend normally listens at:
+
+```text
+http://localhost:8080
+```
+
+Verify the health endpoint from another terminal:
 
 ```bash
 curl -i http://localhost:8080/health
 ```
 
-A successful response has HTTP status `200`. Keep the backend terminal running.
+A successful response returns HTTP status `200` and a JSON response containing:
 
-### Start the frontend
+```json
+{"status":"ok"}
+```
+
+The health endpoint confirms that the HTTP server is responding. It does not, by itself, verify every database-backed operation.
+
+Keep the backend terminal running while using EatMe.
+
+### Start the Frontend
 
 From the repository root in another terminal:
 
@@ -186,13 +293,42 @@ npm ci
 npm run dev
 ```
 
-Open the address printed by Vite, usually `http://localhost:5173`. The Vite development server proxies frontend `/api` requests to the Go backend on port `8080`.
+Open the URL displayed by Vite, normally:
 
-### Create a test EatMe account
+```text
+http://localhost:5173
+```
 
-The current frontend has a login page but no registration form. New accounts can be created by sending a JSON `POST` request to `http://localhost:8080/create` using an API client (such as Apidog) or an HTTP command-line tool.
+The Vite development server proxies requests beginning with `/api` to the Go backend on `http://localhost:8080`.
 
-Example JSON body (replace the example email and password with unique test values):
+The frontend and backend should both remain running during testing.
+
+## Create a Test EatMe Account
+
+### Register Through the Frontend
+
+The current frontend includes an account registration form.
+
+1. Open EatMe in your browser.
+2. Click **Create an account** on the login screen.
+3. Enter the requested personal details, email address, and password.
+4. Confirm your password and click **Create account**.
+
+Passwords must contain at least 8 characters. The signup form also validates required fields, email format, password confirmation, and date of birth.
+
+After registration, the frontend attempts to sign in automatically. If automatic login fails, use the login screen to sign in with the newly created account.
+
+### Alternative: Register Through the Backend API
+
+Developers may also create test accounts directly through the backend's `POST /create` endpoint.
+
+Send a JSON POST request to:
+
+```text
+http://localhost:8080/create
+```
+
+Example request body:
 
 ```json
 {
@@ -205,20 +341,82 @@ Example JSON body (replace the example email and password with unique test value
 }
 ```
 
-Successful registration returns HTTP `201 Created`. Then log in through the frontend with the **EatMe account email and password**, not the PostgreSQL database credentials. Use a password reserved for this throwaway test account, and avoid exposing it in shell history or logs.
+Replace the example values with appropriate test data and a unique email address. The password placeholder is not intended to be used literally.
 
-### Reproduce the verified beta flow
+Successful account creation returns HTTP status `201 Created`.
 
-1. Log in through the frontend.
-2. On **My Groceries**, add a new item such as `Apple`.
-3. Confirm it appears in the list.
-4. Refresh the page and confirm it persists.
-5. Search for `Apple` and confirm the result appears.
-6. Select `Apple` to open its **variants** page and view or add specific types of apple.
+Afterward, sign in using the EatMe account's email and password, not the PostgreSQL database credentials.
 
-The first five steps were manually verified end to end on November 3. The sixth step reflects the completed item-to-variants navigation and should be smoke-tested on the final merged frontend before recording the demo.
+Use temporary credentials created specifically for testing, and avoid including passwords in shell history or logs.
 
-## Test
+## Manual Smoke Testing
+
+After starting the frontend and backend and signing in, the following steps can be used to check the current interface.
+
+These are **suggested checks**, not a claim that every workflow has already passed end-to-end testing.
+
+### Grocery Management
+
+1. Open **Groceries** and click **+ Add**.
+2. Search for a saved food. If it exists, enter a purchased quantity and click **Add**.
+3. If it does not exist, choose the option to add a new food.
+4. Enter the food name, size, storage location, shelf-life estimate, and quantity.
+5. Click **Add to groceries**.
+6. Verify that the grocery appears in your inventory.
+7. Refresh the page to check whether the entry persists.
+8. Search for the grocery and open its detail page.
+9. Record a small amount of usage and verify that the remaining quantity changes.
+
+### Saved Foods and Types
+
+1. Open **Settings → Saved foods**.
+2. Create a food, such as Apple.
+3. Open the food and create a type, such as Fuji.
+4. Configure its weight, serving size, storage location, and shelf-life information.
+5. Open the type to view its details and associated inventory entries.
+
+### Recipes
+
+1. Open **Recipes**.
+2. Create a recipe with a name and serving count.
+3. Open the recipe and add ingredients from Saved foods.
+4. Check whether the ingredient availability information matches the groceries recorded in your inventory.
+5. If ingredients are missing, review the shopping list and try **Copy list**.
+
+### Sharing Permissions
+
+1. Open **Settings → Sharing**.
+2. Confirm that your user ID is displayed.
+3. If another approved test account is available, create a sharing permission using that account's user ID.
+4. Verify that the permission appears under **Sharing with**.
+5. Revoke the permission and verify that it is no longer listed as active.
+
+The sharing screen currently manages access permissions, but the main Groceries page does not yet display another user's shared inventory.
+
+For more detailed feature instructions, see the [User Manual](docs/USER_MANUAL.md).
+
+## Historical Beta Verification
+
+### November 3, 2026: Authentication and Item Management
+
+During beta preparation, the team reported manually verifying an earlier grocery-management workflow against the shared development database.
+
+The documented test involved:
+
+1. Creating a test account through the backend registration endpoint.
+2. Logging in through the frontend.
+3. Adding a food item such as Apple.
+4. Confirming that the item appeared in the application's list.
+5. Refreshing the page and verifying that the saved item persisted.
+6. Searching for the item and confirming that a matching result appeared.
+
+The team reported that authenticated requests successfully traveled through the React frontend, Go API, and PostgreSQL database, and that the item remained available after refreshing.
+
+**This is a historical test result.** It reflects the application and workflow tested on November 3, 2026, not the full set of features currently implemented.
+
+Since that test, the frontend's grocery-management workflow and navigation have changed. The manual smoke tests above describe the newer interface and should be executed again before claiming additional end-to-end verification.
+
+## Testing
 
 ### Frontend
 
@@ -232,6 +430,13 @@ npm test
 npm run build
 ```
 
+These commands perform the following checks:
+
+- `npm ci` — Install dependencies from the lockfile.
+- `npm run lint` — Run ESLint.
+- `npm test` — Run Vitest tests.
+- `npm run build` — Run TypeScript validation and the Vite production build.
+
 ### Backend
 
 From the repository root:
@@ -244,43 +449,105 @@ go test ./...
 go build ./...
 ```
 
-These commands passed locally during beta preparation. Team members also tested individual backend API operations, including authentication, item/variant endpoints, and inventory instance endpoints. The C1b/C1c instance endpoints passed 13 scenarios in Apidog.
+These commands download dependencies, check for common Go issues, run tests, and compile the backend.
 
-The manual beta flow described above additionally verified data persistence through the actual frontend and shared database. Broader UI integration tests and a measured coverage report remain future work.
+The team previously reported testing backend operations for authentication, items, variants, and inventory instances during beta preparation. The C1b/C1c inventory endpoints were also reported to have passed 13 scenarios in Apidog.
+
+Those results are historical testing records and should not be treated as proof that every new frontend workflow has been verified against the latest database state.
 
 ## Continuous Integration
 
-The GitHub Actions workflow in `.github/workflows/ci.yml` runs on **pushes to `main`** and **pull requests targeting `main`**.
+EatMe uses GitHub Actions for continuous integration.
 
-- Frontend: `npm ci`, `npm run lint`, `npm test`
-- Backend: `go vet ./...`, `go test ./...`
+The workflow is defined in:
 
-Recent GitHub Actions runs passed for the beta branches and merges. Run the build commands above locally too; the current CI workflow does **not** include the frontend or backend build steps.
+```text
+.github/workflows/ci.yml
+```
+
+It runs on:
+
+- Pushes to `main`
+- Pull requests targeting `main`
+
+### Frontend CI
+
+The frontend job uses Node.js 22 and runs:
+
+```bash
+npm ci
+npm run lint
+npm test
+npm run build
+```
+
+### Backend CI
+
+The backend job uses the Go version declared in `backend/go.mod` and provisions a PostgreSQL 16 service for its test environment.
+
+It runs:
+
+```bash
+go vet ./...
+go build ./...
+go test -race -coverprofile=coverage.out ./...
+```
+
+The workflow then generates a coverage summary using:
+
+```bash
+go tool cover -func=coverage.out | tail -1
+```
+
+This provides automated linting, tests, builds, race detection, and backend coverage information.
+
+However, these checks do not replace manual end-to-end testing of the entire frontend, backend, and development database workflow.
 
 ## Version Control and Bug Tracking
 
-EatMe uses GitHub for source control, pull requests, continuous integration, and issue tracking. Team members develop changes on branches and merge completed work into `main`.
+EatMe uses GitHub for source control, collaboration, pull requests, continuous integration, and issue tracking.
 
-Reproducible bugs should be tracked in GitHub Issues with:
+Contributors should develop changes on separate branches and submit pull requests targeting `main`.
 
-- A descriptive title and affected component
-- Steps to reproduce
-- Expected and actual behavior
-- Relevant logs or screenshots, excluding credentials or secrets
+Before opening a pull request:
 
-## Known Beta Limitations
+1. Review the changes for correctness and unintended modifications.
+2. Run the relevant lint, test, and build commands.
+3. Verify that no credentials or secrets are included.
+4. Describe the changes and reference any related GitHub issues.
 
-- The frontend supports login, but account registration still requires the backend API rather than an in-app sign-up form.
-- The My Groceries → variants navigation is connected, and the variants page includes listing, search, and add controls; however, the full variant-to-inventory-instance workflow is not yet integrated and verified through the frontend.
-- Backend C1 endpoints for listing, adding, and using inventory instances are implemented, but a complete UI for managing purchased quantities and consumption is still in progress.
-- Automated freshness tracking and expiry notifications, barcode-based entry, image identification, and recipe recommendations are not complete end-to-end beta experiences.
-- A public production web deployment was not part of the locally verified flow.
-- Fresh-database initialization and role setup are not automated for a new developer.
-- Automated test coverage can be expanded, especially for the full UI-to-database workflow.
+Report reproducible bugs through [GitHub Issues](https://github.com/erenlin/EatMe/issues).
 
+A useful bug report should include:
 
-## Project Documentation
+- A descriptive title and the affected feature
+- Steps to reproduce the problem
+- Expected behavior
+- Actual behavior
+- Relevant screenshots or error messages, with sensitive information removed
 
-Full project requirements, architecture, design, testing plans, and process documentation are available in the team's living document.
+## Known Limitations
 
-[Download the EatMe Living Document (PDF)](https://docs.google.com/document/d/1vb92Mq4vGCpuq9xHpmhAjUwD85Nq22ePbZ-8fTMNtHc/export?format=pdf)
+EatMe is still in development, and several planned features are not yet available as complete user-facing workflows.
+
+- **Public deployment:** A publicly accessible production website is not currently documented.
+- **Shared inventory:** The frontend supports creating and revoking sharing permissions, but the current Groceries screen does not request or display another user's shared inventory.
+- **Barcode scanning:** Automatic grocery entry using barcodes is not currently implemented as a user-facing workflow.
+- **Photo identification:** Automatic identification of groceries from photos is not currently available through the interface.
+- **Expiration notifications:** The app displays expiration information, but automated expiration reminders are not currently implemented.
+- **Shelf-life estimates:** The new-food form uses general starting values rather than food-specific shelf-life recommendations. Users should review and adjust them.
+- **Database provisioning:** Docker Compose supports isolated local development; managed database environments still require approved credentials and provisioning.
+- **End-to-end validation:** Automated linting, tests, and builds are available, but complete browser-to-database workflows still require additional verification.
+
+Expiration information is intended to support grocery organization. It should not be relied upon as a guarantee that food is safe to eat.
+
+## Project Documentation and Support
+
+Additional project resources:
+
+- [EatMe User Manual](docs/USER_MANUAL.md)
+- [Coding Guidelines](coding-guidelines.md)
+- [EatMe Living Document (PDF)](https://docs.google.com/document/d/1vb92Mq4vGCpuq9xHpmhAjUwD85Nq22ePbZ-8fTMNtHc/export?format=pdf)
+- [GitHub Issues](https://github.com/erenlin/EatMe/issues)
+
+For questions about database access or development environment configuration, contact the appropriate team member or database owner through an approved team communication channel.

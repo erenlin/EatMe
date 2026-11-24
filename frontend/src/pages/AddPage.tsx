@@ -4,11 +4,14 @@
 //      so users never have to visit the Dictionary first. (User study: both testers got stuck here.)
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
+import BarcodeScanner from "../components/BarcodeScanner";
 import { ApiError } from "../services/client";
 import { loadAllFoods, type Food } from "../services/foods";
 import { addInstance } from "../services/instances";
 import { createItem, lookupItems } from "../services/items";
+import { lookupBarcode } from "../services/openfoodfacts";
 import { addVariant, type StoreMode } from "../services/variants";
+import { closestSize, offProductToFoodFields } from "../utils/barcodeToFood";
 import "../styles/AddPage.css";
 
 // Turns any error into a sentence we can show on screen.
@@ -64,6 +67,10 @@ export default function AddPage() {
   const [addError, setAddError] = useState<{ id: number; text: string } | null>(null);
   const [done, setDone] = useState(""); // "Added 2 Gala ✓" before going back
 
+  // ---- Barcode scanner ----
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanning, setScanning] = useState(false); // true while looking up the barcode
+
   // ---- Sticky notes: the "new food" form ----
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState("");
@@ -118,6 +125,34 @@ export default function AddPage() {
     } catch (err) {
       setAddError({ id: food.variant_id, text: messageFor(err) });
       setBusyId(null);
+    }
+  }
+
+  // ---- Barcode scanned: look it up and pre-fill the new food form ----
+  async function handleScan(barcode: string) {
+    setShowScanner(false);
+    setScanning(true);
+    setNewErrors({});
+
+    try {
+      const product = await lookupBarcode(barcode);
+      if (product) {
+        const fields = offProductToFoodFields(product);
+        setNewName(fields.name);
+        setNewKind(fields.kind);
+        setNewStore(fields.store as StoreMode);
+        setNewDays(String(fields.days));
+        setNewSize(closestSize(fields.sizeGrams));
+        setNewQty("1");
+      } else {
+        // Not in Open Food Facts — open the form empty so they can fill it in.
+        setNewErrors({ form: `Barcode ${barcode} wasn't found. Fill in the details below.` });
+        setNewName(search.trim() ? search.trim().charAt(0).toUpperCase() + search.trim().slice(1) : "");
+        setNewKind("");
+      }
+    } finally {
+      setScanning(false);
+      setShowNew(true);
     }
   }
 
@@ -235,7 +270,26 @@ export default function AddPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            <button
+              type="button"
+              className="add-scan-btn"
+              aria-label="Scan a barcode"
+              onClick={() => setShowScanner(true)}
+            >
+              ▦
+            </button>
           </div>
+
+          {scanning && (
+            <p className="add-muted">Looking up barcode…</p>
+          )}
+
+          {showScanner && (
+            <BarcodeScanner
+              onScan={handleScan}
+              onClose={() => setShowScanner(false)}
+            />
+          )}
 
           {loadError ? (
             <p className="add-error" role="alert">

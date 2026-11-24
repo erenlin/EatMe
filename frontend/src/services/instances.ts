@@ -5,6 +5,8 @@ import { listVariants } from "./variants";
 
 export type Instance = {
   instance_id: number;
+  user_id: number;
+  variant_id: number;
   item_name: string; // e.g. "Apple" (the backend already sends it)
   variant_name: string;
   quantity: number;
@@ -44,10 +46,16 @@ export async function addInstance(variantId: number, quantity: number): Promise<
 }
 
 // C1c: use up part of an instance, in grams
-export async function consumeInstance(instanceId: number, grams: number): Promise<UseResult> {
+export type ConsumptionReason = "consumed" | "discarded";
+
+export async function consumeInstance(
+  instanceId: number,
+  grams: number,
+  reason: ConsumptionReason = "consumed",
+): Promise<UseResult> {
   return request<UseResult>("/api/instances/use", {
     method: "POST",
-    body: { instance_id: instanceId, grams },
+    body: { instance_id: instanceId, grams, reason },
   });
 }
 
@@ -101,4 +109,16 @@ export async function listAllInstances(): Promise<Grocery[]> {
 export async function getGrocery(instanceId: number): Promise<Grocery | null> {
   const all = await listAllInstances();
   return all.find((g) => g.instance_id === instanceId) ?? null;
+}
+
+// A grocery belonging to someone who shares with the current user.
+export type SharedInstance = Instance & {
+  owner_name: string;
+};
+
+// Fetch all groceries shared with the logged-in user.
+// Ownership and permissions are checked by the backend.
+export async function listSharedInstances(): Promise<SharedInstance[]> {
+  const rows = await request<SharedInstance[]>("/api/instances/shared");
+  return rows ?? [];
 }

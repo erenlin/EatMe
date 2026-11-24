@@ -14,47 +14,51 @@ set search_path = kitchen, public;
 --    p_multiplier scales every ingredient line's grams needed (2 = double the recipe); coverage uses the scaled amounts.
 --
 --    Inventory is matched to each ingredient line by variant:
---      the same variant always matches; another user's variant matches by name, kept when score >= 0.75:
---      score = 0.5 x item-name similarity + 0.5 x variant-name similarity (pg_trgm, case-insensitive).
+--      the same variant always matches; another user's variant matches only when both its item name and its
+--      variant name equal the line's, case-insensitively (exact match, no fuzzy matching).
 --
 --    Expired and used-up instances are left out; instances with no expiry set for their store mode still count.
---    Coverage, from 0 to 1 (null for a recipe with no ingredients):
---      p_weighted false: grams on hand / grams needed, each line capped at its need; own recipes first.
---      p_weighted true:  average of each line's min(on hand / needed, 1), every line equal; own and shared mixed.
+--    Coverage, from 0 to 1 (null for a recipe with no ingredients), counts own and shared grams together:
+--      grams on hand / grams needed, each line capped at its need. Own recipes are listed first.
 --
 --    ingredient_lines is a jsonb array, one element per ingredient line (length = ingredient_count, [] when none):
---      { "name": "<item> - <variant>", "status": "full" | "partial" | "none",
---        "needed_grams": <scaled need>, "available_grams": <grams on hand that match> }
---      Sorted full, then partial, then none; within a status by the recipe's line position, then name.
+--      { "name": "<item> - <variant>", "status": "full" | "conditional" | "partial" | "none",
+--        "needed_grams": <scaled need>, "own_grams": <acting user's matching grams>, "shared_grams": <other users'> }
+--      full:        the acting user's own inventory covers the line
+--      conditional: own inventory falls short, but own + shared inventory covers it (only when p_shared)
+--      partial:     own + shared inventory covers some of the line
+--      none:        nothing matches
+--      Sorted full, conditional, partial, none; within a status by the recipe's line position, then name.
 --
 --    Ties are sorted by name (case-insensitive). Results are paged, 50 per page; p_page starts at 1.
 --    total_count is the full count across all pages.
+
+-- Changing the parameter list makes a new overload rather than replacing the old function, so drop old signatures first.
 
 create or replace function usp_recipe_get (
     p_user_id           int,
     p_include_shared    boolean     default false,
     p_shared            boolean     default false,
-    p_weighted          boolean     default false,
     p_page              int         default 1,
     p_multiplier        int         default 1
 )
     returns table
-(
-    recipe_id           integer,
-    user_id             integer,
-    owner_name          varchar,
-    is_own              boolean,
+            (
+                recipe_id           integer,
+                user_id             integer,
+                owner_name          varchar,
+                is_own              boolean,
 
-    recipe_name         varchar,
-    servings            smallint,
-    instructions        text,
-    ingredient_count    integer,
-    ingredient_lines    jsonb,
-    coverage_score      real,
+                recipe_name         varchar,
+                servings            smallint,
+                instructions        text,
+                ingredient_count    integer,
+                ingredient_lines    jsonb,
+                coverage_score      real,
 
-    created_at          timestamptz,
-    total_count         integer
-)
+                created_at          timestamptz,
+                total_count         integer
+            )
     language plpgsql
     volatile
     set search_path = kitchen, public
@@ -64,13 +68,11 @@ declare
     tabled_name         constant table_name := 'recipes';
     action_name         constant log_action := 'select';
 
-    -- Constant page size and minimum name-match score for other users' variants.
+    -- Constant page size.
     page_size           constant int        := 50;
-    min_match_score     constant real       := 0.75;
 
     v_include_shared    boolean             := coalesce(p_include_shared, false);
     v_shared            boolean             := coalesce(p_shared, false);
-    v_weighted          boolean             := coalesce(p_weighted, false);
     v_page              int                 := coalesce(p_page, 1);
     v_multiplier        int                 := coalesce(p_multiplier, 1);
 
@@ -129,165 +131,173 @@ begin
                 v_include_shared and grant_row.grantee_user_id = p_user_id and grant_row.revoked_at is null
         ),
 
-        pantry as (
+             pantry as (
 
-            select  -- The acting user's inventory
-                p_user_id  as m_user_id
+                 select  -- The acting user's inventory
+                         p_user_id  as m_user_id
 
-            union all
+                 union all
 
-            select  -- Inventory of every user with an active grant to the acting user
-                grant_row.grantor_user_id
-            from
-                users_share grant_row
-            where
-                v_shared and grant_row.grantee_user_id = p_user_id and grant_row.revoked_at is null
-        ),
+                 select  -- Inventory of every user with an active grant to the acting user
+                         grant_row.grantor_user_id
+                 from
+                     users_share grant_row
+                 where
+                     v_shared and grant_row.grantee_user_id = p_user_id and grant_row.revoked_at is null
+             ),
 
-        -- Materialized so it is computed once, not re-run for every ingredient line in the lateral below
-        stock as materialized (
+             -- Materialized so it is computed once, not re-run for every ingredient line in the lateral below
+             stock as materialized (
+                 select  -- Grams on hand per variant: active, unexpired instances only
+                         stock_variant.id                   as k_variant_id,
+                         stock_variant.user_id              as k_user_id,
+                         lower(stock_item.item_name)        as k_item_name,
+                         lower(stock_variant.variant_name)  as k_variant_name,
+                         sum(instance.quantity::bigint * instance.unit_weight_grams - used.u_grams)
+                                                            as k_grams
+                 from pantry
+                          inner join item_variants stock_variant on stock_variant.user_id = pantry.m_user_id
+                          inner join items stock_item on stock_item.id = stock_variant.item_id
+                          inner join item_instances instance on instance.variant_id = stock_variant.id
+                          left join expiry shelf on shelf.variant_id = instance.variant_id and shelf.store_mode = instance.store_mode
 
-            select  -- Grams on hand per variant: active, unexpired instances only
-                stock_variant.id                   as k_variant_id,
-                stock_variant.user_id              as k_user_id,
-                lower(stock_item.item_name)        as k_item_name,
-                lower(stock_variant.variant_name)  as k_variant_name,
-                sum(instance.quantity::bigint * instance.unit_weight_grams - used.u_grams)
-            as
-                k_grams
-            from
-                pantry
-                    inner join item_variants stock_variant on stock_variant.user_id = pantry.m_user_id
-                    inner join items stock_item on stock_item.id = stock_variant.item_id
-                    inner join item_instances instance on instance.variant_id = stock_variant.id
-                    left join expiry shelf on shelf.variant_id = instance.variant_id and shelf.store_mode = instance.store_mode
+                          cross join lateral (
+                     select  -- Total used so far, by anyone, for any reason; 0 when nothing is recorded yet
+                             coalesce(sum(consumption.grams), 0)::bigint as u_grams
+                     from
+                         item_consumption consumption
+                     where
+                         consumption.instance_id = instance.id
+                     ) used
+                 where
+                     used.u_grams < instance.quantity::bigint * instance.unit_weight_grams
+                   and (
+                     shelf.expiry_days is null or instance.added_at + make_interval(days => shelf.expiry_days::int + instance.expiry_modifier::int) > now()
+                     )
+                 group by
+                     stock_variant.id,
+                     stock_variant.user_id,
+                     stock_item.item_name,
+                     stock_variant.variant_name
+             ),
 
-            cross join lateral (
-                select  -- Total used so far, by anyone, for any reason; 0 when nothing is recorded yet
-                    coalesce(sum(consumption.grams), 0)::bigint as u_grams
-                from
-                    item_consumption consumption
-                where
-                    consumption.instance_id = instance.id
-        ) used
+             headers as (
+                 select
+                     header.id            as h_recipe_id,
+                     header.user_id       as h_user_id,
+                     (owner_row.first_name || ' ' || owner_row.last_name)::varchar
+                                          as h_owner_name,
+                     owner.o_is_own       as h_is_own,
 
-        where
-            used.u_grams < instance.quantity::bigint * instance.unit_weight_grams and (shelf.expiry_days is null or instance.added_at + make_interval(days => shelf.expiry_days::int + instance.expiry_modifier::int) > now())
-        group by
-            stock_variant.id,
-            stock_variant.user_id,
-            stock_item.item_name,
-            stock_variant.variant_name
-        ),
+                     header.recipe_name   as h_recipe_name,
+                     header.servings      as h_servings,
+                     header.instructions  as h_instructions,
+                     header.created_at    as h_created_at
+                 from
+                     owners owner
+                         inner join recipe header on header.user_id = owner.o_user_id
+                         inner join users owner_row on owner_row.id = owner.o_user_id
+             ),
 
-        headers as (
-            select
-                header.id            as h_recipe_id,
-                header.user_id       as h_user_id,
-                (owner_row.first_name || ' ' || owner_row.last_name)::varchar
-            as h_owner_name,
-                owner.o_is_own       as h_is_own,
+             line_rows as (
+                 select  -- Each ingredient line, its scaled need, the grams on hand that match it, and its fill status
+                         head.h_recipe_id                                            as l_recipe_id,
+                         ingredient.position                                         as l_position,
+                         (line_item.item_name || ' - ' || line_variant.variant_name)::varchar
+                                                                                     as l_name,
+                         ingredient.grams::bigint * v_multiplier                     as l_grams,
+                         avail.a_own_grams                                           as l_own,
+                         avail.a_shared_grams                                        as l_shared,
+                         avail.a_own_grams + avail.a_shared_grams                    as l_available,
 
-                header.recipe_name   as h_recipe_name,
-                header.servings      as h_servings,
-                header.instructions  as h_instructions,
-                header.created_at    as h_created_at
-            from
-                owners owner
-                    inner join recipe header on header.user_id = owner.o_user_id
-                    inner join users owner_row on owner_row.id = owner.o_user_id
-        ),
+                         -- 1 = full, 2 = conditional, 3 = partial, 4 = none; drives both the label and the segment order
+                         case
+                             when avail.a_own_grams >= ingredient.grams::bigint * v_multiplier                       then 1
+                             when avail.a_own_grams + avail.a_shared_grams >= ingredient.grams::bigint * v_multiplier then 2
+                             when avail.a_own_grams + avail.a_shared_grams > 0                                        then 3
+                             else
+                                 4
+                             end                                                         as l_rank
+                 from
+                     headers head
+                         inner join recipe_ingredients ingredient on ingredient.recipe_id = head.h_recipe_id
+                         inner join item_variants line_variant on line_variant.id = ingredient.variant_id
+                         inner join items line_item on line_item.id = line_variant.item_id
 
-        line_rows as (
-            select  -- Each ingredient line, its scaled need, the grams on hand that match it, and its fill status
-                head.h_recipe_id                                                      as l_recipe_id,
-                ingredient.position                                                   as l_position,
-                (line_item.item_name || ' - ' || line_variant.variant_name)::varchar  as l_name,
-                ingredient.grams::bigint * v_multiplier                               as l_grams,
-                avail.a_grams                                                         as l_available,
+                         cross join lateral (
+                         select  -- Same variant, or another user's variant with the same item and variant names (case-insensitive);
+                                 -- split into the acting user's grams and everyone else's
+                                 coalesce(sum(stock.k_grams) filter (where stock.k_user_id =  p_user_id), 0)::bigint as a_own_grams,
+                                 coalesce(sum(stock.k_grams) filter (where stock.k_user_id <> p_user_id), 0)::bigint as a_shared_grams
+                         from
+                             stock
+                         where
+                             stock.k_variant_id = ingredient.variant_id
+                            or (
+                             stock.k_user_id <> line_variant.user_id
+                                 and stock.k_item_name    = lower(line_item.item_name)
+                                 and stock.k_variant_name = lower(line_variant.variant_name)
+                             )
+                         ) avail
+             ),
 
-            -- 1 = full, 2 = partial, 3 = none; drives both the label and the segment order
-            case
-                when avail.a_grams >= ingredient.grams::bigint * v_multiplier then 1
-                when avail.a_grams > 0                                        then 2
-            else
-                3
-            end
-                as l_rank
-            from
-                headers head
-                    inner join recipe_ingredients ingredient on ingredient.recipe_id = head.h_recipe_id
-                    inner join item_variants line_variant on line_variant.id = ingredient.variant_id
-                    inner join items line_item on line_item.id = line_variant.item_id
+             scores as (
+                 select
+                     line.l_recipe_id  as s_recipe_id,
+                     count(*)::int     as s_ingredient_count,
 
-            cross join lateral (
-                select  -- Same variant, or another user's variant whose names match closely enough
-                    coalesce(sum(stock.k_grams), 0)::bigint as a_grams
-                from
-                    stock
-                where
-                    stock.k_variant_id = ingredient.variant_id or (stock.k_user_id <> line_variant.user_id
-                      and 0.5 * similarity(stock.k_item_name, lower(line_item.item_name)) + 0.5 * similarity(stock.k_variant_name, lower(line_variant.variant_name)) >= min_match_score)
-                ) avail
-        ),
+                     -- Grams on hand / grams needed, each line capped at its need
+                     (sum(least(line.l_available, line.l_grams))::numeric / sum(line.l_grams))::real
+                                       as s_coverage,
 
-        scores as (
-            select
-                line.l_recipe_id  as s_recipe_id,
-                count(*)::int     as s_ingredient_count,
+                     -- One element per line for the coverage bar: full, conditional, partial, none
+                     jsonb_agg (
+                             jsonb_build_object (
+                                     'name',          line.l_name,
+                                     'status',        case line.l_rank
+                                                          when 1 then 'full'
+                                                          when 2 then 'conditional'
+                                                          when 3 then 'partial'
+                                                          else
+                                                              'none'
+                                         end,
+                                     'needed_grams',  line.l_grams,
+                                     'own_grams',     line.l_own,
+                                     'shared_grams',  line.l_shared
+                             )
+                             order by
+                                 line.l_rank,
+                                 line.l_position,
+                                 lower(line.l_name)
+                     )                 as s_lines
+                 from
+                     line_rows line
+                 group by
+                     line.l_recipe_id
+             ),
 
-                -- Grams on hand / grams needed, each line capped at its need
-                (sum(least(line.l_available, line.l_grams))::numeric / sum(line.l_grams))::real as s_grams_coverage,
+             results as (
+                 select
+                     head.h_recipe_id                                    as r_recipe_id,
+                     head.h_user_id                                      as r_user_id,
+                     head.h_owner_name                                   as r_owner_name,
+                     head.h_is_own                                       as r_is_own,
 
-                -- Average of each line's fill ratio, every line equal
-                avg(least(line.l_available::numeric / line.l_grams, 1))::real as s_line_coverage,
+                     head.h_recipe_name                                  as r_recipe_name,
+                     head.h_servings                                     as r_servings,
+                     head.h_instructions                                 as r_instructions,
+                     coalesce(score.s_ingredient_count, 0)               as r_ingredient_count,
+                     coalesce(score.s_lines, '[]'::jsonb)                as r_lines,
+                     score.s_coverage                                    as r_coverage,
 
-                -- One element per line for the coverage bar: full, then partial, then none
-                jsonb_agg (
-                    jsonb_build_object (
-                        'name',            line.l_name,
-                        'status',          case line.l_rank when 1 then 'full' when 2 then 'partial' else 'none' end,
-                        'needed_grams',    line.l_grams,
-                        'available_grams', line.l_available
-                    )
+                     head.h_created_at                                   as r_created_at,
 
-                order by
-                    line.l_rank,
-                    line.l_position,
-                    lower(line.l_name))  as s_lines
-                from
-                    line_rows line
-                group by
-                    line.l_recipe_id
-        ),
-
-        results as (
-
-            select
-                head.h_recipe_id                       as r_recipe_id,
-                head.h_user_id                         as r_user_id,
-                head.h_owner_name                      as r_owner_name,
-                head.h_is_own                          as r_is_own,
-
-                head.h_recipe_name                     as r_recipe_name,
-                head.h_servings                        as r_servings,
-                head.h_instructions                    as r_instructions,
-                coalesce(score.s_ingredient_count, 0)  as r_ingredient_count,
-                coalesce(score.s_lines, '[]'::jsonb)   as r_lines,
-
-            case
-                when v_weighted then score.s_line_coverage
-            else
-                score.s_grams_coverage
-            end                                        as r_coverage,
-
-                head.h_created_at                      as r_created_at,
-
-                -- Computed before limit/offset, so it counts every matching recipe
-                (count(*) over ())::int                as r_total_count
-            from
-                headers head left join scores score on score.s_recipe_id = head.h_recipe_id
-            )
+                     -- Computed before limit/offset, so it counts every matching recipe
+                     (count(*) over ())::int                             as r_total_count
+                 from
+                     headers head
+                         left join scores score on score.s_recipe_id = head.h_recipe_id
+             )
 
         select
             res.r_recipe_id,
@@ -307,35 +317,31 @@ begin
         from
             results res
         order by
-            case when
-                v_weighted then false
-            else
-                res.r_is_own end desc,
-                res.r_coverage desc nulls last,
-                lower(res.r_recipe_name),
-                res.r_recipe_id
-            limit
-                page_size
+            res.r_is_own desc,
+            res.r_coverage desc nulls last,
+            lower(res.r_recipe_name),
+            res.r_recipe_id
+        limit
+            page_size
             offset
-                (v_page - 1)::bigint * page_size;
+            (v_page - 1)::bigint * page_size;
 
     get diagnostics v_row_count = row_count;
 
     -- Step 04: Log successful operation
     perform usp_log_operation (
-        p_user_id       := p_user_id,
-        p_action        := action_name,
-        p_table_name    := tabled_name,
-        p_row_id        := null,
-        p_details       := jsonb_build_object (
-            'include_shared',  v_include_shared,
-            'shared',          v_shared,
-            'weighted',        v_weighted,
-            'page',            v_page,
-            'multiplier',      v_multiplier,
-            'recipe_count',    v_row_count
-        )
-    );
+            p_user_id       := p_user_id,
+            p_action        := action_name,
+            p_table_name    := tabled_name,
+            p_row_id        := null,
+            p_details       := jsonb_build_object (
+                    'include_shared',  v_include_shared,
+                    'shared',          v_shared,
+                    'page',            v_page,
+                    'multiplier',      v_multiplier,
+                    'recipe_count',    v_row_count
+                               )
+            );
 end;
 $$;
 
