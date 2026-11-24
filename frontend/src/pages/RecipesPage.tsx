@@ -176,7 +176,12 @@ export default function RecipesPage() {
 
   return (
     <main className="recipes">
-      <h1 className="recipes-title">Recipes for You</h1>
+      <header className="recipes-header">
+        <h1 className="recipes-title">Recipes for You</h1>
+        <Link className="recipes-shopping-link" to="/shopping">
+          Shopping list
+        </Link>
+      </header>
 
       <label htmlFor="recipes-search" className="recipes-hidden">
         Search recipes

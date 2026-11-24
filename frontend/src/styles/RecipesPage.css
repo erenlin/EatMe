@@ -34,7 +34,25 @@
   }
 }
 
-.recipes-title { font-family: inherit; font-size: 1.4rem; letter-spacing: normal; margin: 0 0 1.25rem; }
+.recipes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.recipes-title { font-family: inherit; font-size: 1.4rem; letter-spacing: normal; margin: 0; }
+.recipes-shopping-link {
+  flex: none;
+  font-weight: 600;
+  padding: 0.55rem 1rem;
+  border: 1.5px solid var(--mauve);
+  border-radius: 8px;
+  color: var(--mauve);
+  text-decoration: none;
+}
+.recipes-shopping-link:hover { background: var(--blush); }
+.recipes-shopping-link:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
 
 /* ---------- Search and add form ---------- */
 .recipes-input {
