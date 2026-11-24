@@ -2,6 +2,7 @@
 // a shopping list for what's missing, and a form to add an ingredient (D2b).
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useParams } from "react-router";
+import CookPanel from "../components/CookPanel";
 import FoodPicker from "../components/FoodPicker";
 import { ApiError } from "../services/client";
 import { loadAllFoods, type Food } from "../services/foods";
@@ -169,6 +170,16 @@ export default function RecipeDetailPage() {
     ];
   });
 
+  // After cooking, reload so "Have enough / Missing" and the shopping list update.
+  function reloadRecipe() {
+    Promise.all([listIngredients(recipeId), listAllRecipes()])
+      .then(([rows, recipes]) => {
+        setIngredients(rows);
+        setRecipe(recipes.find((r) => r.recipe_id === recipeId) ?? null);
+      })
+      .catch(() => {});
+  }
+
   async function copyList() {
     if (!recipe) return;
     try {
@@ -244,6 +255,16 @@ export default function RecipeDetailPage() {
                 );
               })}
             </ul>
+          )}
+
+          {/* E1 + E2: cook it, using the groceries that expire soonest */}
+          {ingredients.length > 0 && (
+            <CookPanel
+              recipeId={recipeId}
+              ingredients={ingredients}
+              multiplier={multiplier}
+              onCooked={reloadRecipe}
+            />
           )}
 
           {/* Shopping list: what's missing or short */}
