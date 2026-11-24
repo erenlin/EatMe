@@ -46,7 +46,8 @@
 }
 .recipe-status i { width: 0.6rem; height: 0.6rem; border-radius: 50%; display: inline-block; }
 .recipe-status-full i { background: #5a9a6a; }
-.recipe-status-partial i { background: #c9a94a; }
+.recipe-status-partial i,
+.recipe-status-conditional i { background: #c9a94a; }
 .recipe-status-none i { background: #c0504a; }
 .recipe-status-none { color: var(--error); }
 

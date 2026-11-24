@@ -11,6 +11,7 @@ import { listAllRecipes, type IngredientLine, type Recipe } from "../services/re
 import {
   describeGrams,
   gramsPer,
+  onHandGrams,
   scaleLines,
   unitsFor,
   type AmountUnit,
@@ -42,6 +43,7 @@ const lineKey = (item: string, variant: string) => `${item} - ${variant}`.toLowe
 
 const STATUS_TEXT: Record<IngredientLine["status"], string> = {
   full: "Have enough",
+  conditional: "Shared has it",
   partial: "Have some",
   none: "Missing",
 };
@@ -159,8 +161,8 @@ export default function RecipeDetailPage() {
   // Everything you don't have enough of, and how much more to get.
   const toBuy = ingredients.flatMap((ing) => {
     const line = lineFor(ing);
-    if (!line || line.status === "full") return [];
-    const short = line.needed_grams - Math.max(0, line.available_grams);
+    if (!line || line.status === "full" || line.status === "conditional") return [];
+    const short = line.needed_grams - Math.max(0, onHandGrams(line));
     return [
       {
         id: ing.ingredient_id,
