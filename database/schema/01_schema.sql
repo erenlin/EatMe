@@ -324,7 +324,7 @@ create table if not exists nutrition (
 --  ================================================================================================================  --
 
 create type log_action as enum ('insert', 'update', 'delete', 'login', 'share','revoke', 'select', 'restock');
-create type table_name as enum ('users', 'users_share', 'items', 'item_variants', 'expiry', 'item_instances', 'item_consumption', 'recipes', 'recipe_ingredients');
+create type table_name as enum ('users', 'users_share', 'items', 'item_variants', 'expiry', 'item_instances', 'item_consumption', 'recipes', 'recipe_ingredients', 'restock');
 
 create table if not exists logs (
     id              integer         generated always as identity primary key,
@@ -345,3 +345,5 @@ create index ix_logs_table_row on logs (table_name, row_id);
 create index ix_logs_logged_at on logs (logged_at);
 
 --  ================================================= END OF FILE ==================================================  --
+
+ALTER TYPE table_name ADD VALUE 'restock'
