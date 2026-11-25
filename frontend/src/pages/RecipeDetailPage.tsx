@@ -1,15 +1,19 @@
 // Recipe details (/recipes/:id): the recipe's ingredients (D2a), what you have of each,
-// a shopping list for what's missing, and a form to add an ingredient (D2b).
+// a shopping list for what's missing, an "Add to shopping list" button (F1), and a form to
+// add an ingredient (D2b).
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useParams } from "react-router";
+import CookPanel from "../components/CookPanel";
 import FoodPicker from "../components/FoodPicker";
 import { ApiError } from "../services/client";
 import { loadAllFoods, type Food } from "../services/foods";
 import { addIngredient, listIngredients, type Ingredient } from "../services/ingredients";
 import { listAllRecipes, type IngredientLine, type Recipe } from "../services/recipes";
+import { getShoppingList, restockRecipe, type RestockLine } from "../services/restock";
 import {
   describeGrams,
   gramsPer,
+  onHandGrams,
   scaleLines,
   unitsFor,
   type AmountUnit,
@@ -41,6 +45,7 @@ const lineKey = (item: string, variant: string) => `${item} - ${variant}`.toLowe
 
 const STATUS_TEXT: Record<IngredientLine["status"], string> = {
   full: "Have enough",
+  conditional: "Shared has it",
   partial: "Have some",
   none: "Missing",
 };
@@ -84,6 +89,11 @@ export default function RecipeDetailPage() {
   const [formError, setFormError] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const [onList, setOnList] = useState(false); // this recipe is already on the shopping list
+  const [restocking, setRestocking] = useState(false);
+  const [restocked, setRestocked] = useState<RestockLine[] | null>(null);
+  const [restockError, setRestockError] = useState("");
+
   // ---- Load the recipe, its ingredients, and the foods to pick from ----
   useEffect(() => {
     if (!Number.isInteger(recipeId) || recipeId <= 0) {
@@ -102,7 +112,31 @@ export default function RecipeDetailPage() {
       })
       .catch((err: unknown) => setLoadError(messageFor(err)))
       .finally(() => setLoading(false));
+    // Only changes the button's wording, so a failure here is ignored.
+    getShoppingList(true)
+      .then((list) =>
+        setOnList(list.some((it) => it.recipes.some((r) => r.recipe_id === recipeId))),
+      )
+      .catch(() => {});
   }, [recipeId]);
+
+  // ---- F1: put this recipe (at the chosen multiplier) on the shopping list ----
+  async function handleRestock() {
+    setRestockError("");
+    setRestocking(true);
+    try {
+      const lines = await restockRecipe(recipeId, multiplier);
+      setRestocked(lines);
+      if (lines.some((l) => l.status === "added")) setOnList(true);
+    } catch (err) {
+      setRestocked(null);
+      setRestockError(messageFor(err));
+    } finally {
+      setRestocking(false);
+    }
+  }
+  const addedCount = restocked?.filter((l) => l.status === "added").length ?? 0;
+  const notSaved = restocked?.filter((l) => l.status === "no_variant") ?? [];
 
   // Picking a food switches to the unit that suits it: count apples, weigh flour.
   function pickFood(id: number | null) {
@@ -158,8 +192,8 @@ export default function RecipeDetailPage() {
   // Everything you don't have enough of, and how much more to get.
   const toBuy = ingredients.flatMap((ing) => {
     const line = lineFor(ing);
-    if (!line || line.status === "full") return [];
-    const short = line.needed_grams - Math.max(0, line.available_grams);
+    if (!line || line.status === "full" || line.status === "conditional") return [];
+    const short = line.needed_grams - Math.max(0, onHandGrams(line));
     return [
       {
         id: ing.ingredient_id,
@@ -168,6 +202,16 @@ export default function RecipeDetailPage() {
       },
     ];
   });
+
+  // After cooking, reload so "Have enough / Missing" and the shopping list update.
+  function reloadRecipe() {
+    Promise.all([listIngredients(recipeId), listAllRecipes()])
+      .then(([rows, recipes]) => {
+        setIngredients(rows);
+        setRecipe(recipes.find((r) => r.recipe_id === recipeId) ?? null);
+      })
+      .catch(() => {});
+  }
 
   async function copyList() {
     if (!recipe) return;
@@ -246,6 +290,16 @@ export default function RecipeDetailPage() {
             </ul>
           )}
 
+          {/* E1 + E2: cook it, using the groceries that expire soonest */}
+          {ingredients.length > 0 && (
+            <CookPanel
+              recipeId={recipeId}
+              ingredients={ingredients}
+              multiplier={multiplier}
+              onCooked={reloadRecipe}
+            />
+          )}
+
           {/* Shopping list: what's missing or short */}
           {ingredients.length > 0 && recipe && (
             <>
@@ -267,6 +321,51 @@ export default function RecipeDetailPage() {
                   </button>
                 </>
               )}
+
+              <div className="recipe-restock">
+                <button
+                  type="button"
+                  className="recipe-restock-btn"
+                  onClick={handleRestock}
+                  disabled={restocking}
+                >
+                  {restocking
+                    ? "Adding…"
+                    : onList
+                      ? "Update shopping list"
+                      : "Add to shopping list"}
+                  {!restocking && multiplier > 1 && ` (${multiplier}×)`}
+                </button>
+                {onList && !restocked && (
+                  <p className="recipe-muted recipe-restock-note">
+                    Already on your list. Updating replaces it, it doesn't add more.
+                  </p>
+                )}
+                {restockError && (
+                  <p className="recipe-error" role="alert">
+                    {restockError}
+                  </p>
+                )}
+                {restocked && (
+                  <div className="recipe-restock-result" role="status">
+                    <p>
+                      {addedCount === 0
+                        ? "Nothing was added."
+                        : `Added ${addedCount} ${addedCount === 1 ? "food" : "foods"} to your shopping list.`}{" "}
+                      <Link to="/shopping">View shopping list →</Link>
+                    </p>
+                    {notSaved.length > 0 && (
+                      <p className="recipe-restock-warn">
+                        Not added, because you don't have{" "}
+                        {notSaved.length === 1 ? "this food" : "these foods"} saved:{" "}
+                        {notSaved.map((l) => `${l.item_name} · ${l.variant_name}`).join(", ")}.
+                        Add {notSaved.length === 1 ? "it" : "them"} in your{" "}
+                        <Link to="/dictionary">saved foods</Link>, then try again.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </>
           )}
 

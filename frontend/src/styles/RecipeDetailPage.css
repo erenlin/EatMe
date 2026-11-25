@@ -46,7 +46,8 @@
 }
 .recipe-status i { width: 0.6rem; height: 0.6rem; border-radius: 50%; display: inline-block; }
 .recipe-status-full i { background: #5a9a6a; }
-.recipe-status-partial i { background: #c9a94a; }
+.recipe-status-partial i,
+.recipe-status-conditional i { background: #c9a94a; }
 .recipe-status-none i { background: #c0504a; }
 .recipe-status-none { color: var(--error); }
 
@@ -82,6 +83,35 @@
 }
 .recipe-copy:hover { background: var(--blush); }
 .recipe-copy:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
+
+/* Add to shopping list (F1) */
+.recipe-restock { margin-top: 1rem; }
+.recipe-restock-btn {
+  width: 100%;
+  font: inherit;
+  font-weight: 600;
+  min-height: 2.75rem;
+  padding: 0.7rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--mauve);
+  color: var(--page);
+  cursor: pointer;
+}
+.recipe-restock-btn:hover:not(:disabled) { background: var(--mauve-dark); }
+.recipe-restock-btn:disabled { opacity: 0.6; cursor: progress; }
+.recipe-restock-btn:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
+.recipe-restock-note { font-size: 0.8rem; margin-top: 0.5rem; }
+.recipe-restock-result {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: var(--blush);
+  border: 1.5px solid var(--mauve);
+}
+.recipe-restock-result p { margin: 0; }
+.recipe-restock-result a { color: var(--mauve); font-weight: 600; }
+.recipe-restock-warn { margin-top: 0.5rem !important; color: var(--error); font-size: 0.85rem; }
 
 /* Amount + unit side by side */
 .recipe-amount-row { display: flex; gap: 0.5rem; }

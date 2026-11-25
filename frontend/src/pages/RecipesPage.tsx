@@ -34,12 +34,12 @@ function pageCount(rows: Recipe[]): number {
   return Math.max(1, Math.ceil(total / RECIPES_PAGE_SIZE));
 }
 
-// Segmented coverage bar: green for full, yellow for partial, red for missing.
+// Segmented coverage bar: green for full, yellow for partial (or covered only by shared), red for missing.
 function CoverageBar({ lines }: { lines: IngredientLine[] }) {
   const total = lines.length;
   if (total === 0) return null;
   const full = lines.filter((l) => l.status === "full").length;
-  const partial = lines.filter((l) => l.status === "partial").length;
+  const partial = lines.filter((l) => l.status === "partial" || l.status === "conditional").length;
   const none = total - full - partial;
   const pct = (n: number) => `${Math.round((n / total) * 100)}%`;
   const label =
@@ -176,7 +176,12 @@ export default function RecipesPage() {
 
   return (
     <main className="recipes">
-      <h1 className="recipes-title">Recipes for You</h1>
+      <header className="recipes-header">
+        <h1 className="recipes-title">Recipes for You</h1>
+        <Link className="recipes-shopping-link" to="/shopping">
+          Shopping list
+        </Link>
+      </header>
 
       <label htmlFor="recipes-search" className="recipes-hidden">
         Search recipes

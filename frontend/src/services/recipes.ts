@@ -3,11 +3,14 @@
 import { request } from "./client";
 
 // One ingredient line from GET /recipes (inside ingredient_lines).
+// full: your own groceries cover it. conditional: yours fall short, but with groceries shared
+// with you it's covered (only when the list is fetched with shared=true). partial: some of it.
 export type IngredientLine = {
   name: string;
-  status: "full" | "partial" | "none";
+  status: "full" | "conditional" | "partial" | "none";
   needed_grams: number;
-  available_grams: number;
+  own_grams: number; // your matching groceries
+  shared_grams: number; // matching groceries of people who share with you
 };
 
 // One row from GET /recipes.
@@ -20,7 +23,7 @@ export type Recipe = {
   servings: number;
   instructions: string | null;
   ingredient_count: number;
-  ingredient_lines: IngredientLine[]; // per-ingredient coverage, sorted full→partial→none
+  ingredient_lines: IngredientLine[]; // per-ingredient coverage, sorted full→conditional→partial→none
   coverage_score: number | null; // how much of it your groceries cover
   created_at: string;
   total_count: number; // recipes across all pages
