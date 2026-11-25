@@ -5,16 +5,23 @@ import type { IngredientLine } from "../services/recipes";
 
 // Re-compute coverage for each ingredient line scaled to a given multiplier.
 // A multiplier of 2 means the user wants to make 2× the recipe.
+// Same rules as the backend (D1a_fn_recipe_get.sql).
 export function scaleLines(lines: IngredientLine[], multiplier: number): IngredientLine[] {
   return lines.map((l) => {
     const needed = l.needed_grams * multiplier;
+    const own = l.own_grams ?? 0;
+    const total = own + (l.shared_grams ?? 0);
     let status: IngredientLine["status"];
-    if (l.available_grams <= 0) status = "none";
-    else if (l.available_grams >= needed) status = "full";
-    else status = "partial";
+    if (own >= needed) status = "full";
+    else if (total >= needed) status = "conditional";
+    else if (total > 0) status = "partial";
+    else status = "none";
     return { ...l, needed_grams: needed, status };
   });
 }
+
+// Grams on hand for a line, yours plus what's shared with you.
+export const onHandGrams = (l: IngredientLine) => (l.own_grams ?? 0) + (l.shared_grams ?? 0);
 
 // What we need to know about a food to describe an amount of it.
 export type FoodSize = {

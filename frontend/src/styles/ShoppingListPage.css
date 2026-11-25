@@ -1,0 +1,144 @@
+/* Shopping list. Colors come from theme.css; cards match the Groceries and recipe screens. */
+.shopping { padding: 1.5rem 1.25rem 2rem; color: var(--ink); font-family: var(--font); }
+
+.shopping-back { color: var(--mauve); font-weight: 600; text-decoration: none; }
+.shopping-back:hover { text-decoration: underline; }
+
+.shopping-title,
+.shopping-heading {
+  font-family: var(--font);
+  font-weight: 700;
+  letter-spacing: normal;
+  color: var(--ink);
+}
+.shopping-title { font-size: 1.4rem; margin: 1rem 0 1rem; }
+.shopping-heading { font-size: 1.05rem; margin: 1.75rem 0 0.5rem; }
+
+.shopping-muted { color: var(--muted); margin: 0.25rem 0; }
+.shopping-muted a { color: var(--mauve); font-weight: 600; }
+.shopping-error { color: var(--error); font-size: 0.9rem; margin: 0 0 0.75rem; }
+.shopping-note { font-size: 0.8rem; margin-top: 0.75rem; }
+
+.shopping-empty { text-align: center; margin-top: 3rem; }
+.shopping-empty-icon { color: var(--mauve); }
+
+.shopping-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+.shopping-toggle input { accent-color: var(--mauve); width: 1.1rem; height: 1.1rem; }
+
+/* ---------- One food ---------- */
+.shopping-list { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: 0.6rem; }
+.shopping-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--blush);
+}
+.shopping-card.is-covered { background: transparent; }
+.shopping-card.is-covered .shopping-amount { color: var(--fresh); }
+
+.shopping-icon { flex: none; color: var(--mauve); }
+.shopping-info { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; flex: 1; }
+.shopping-name { overflow-wrap: anywhere; }
+.shopping-variant { font-size: 0.8rem; color: var(--muted); }
+.shopping-for { font-size: 0.75rem; color: var(--muted); overflow-wrap: anywhere; }
+
+.shopping-side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; flex: none; }
+.shopping-amount { font-weight: 600; white-space: nowrap; }
+.shopping-have { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+
+.shopping-check {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.85rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--mauve);
+  color: var(--page);
+  cursor: pointer;
+}
+.shopping-check:hover { background: var(--mauve-dark); }
+
+/* ---------- Copy, and the recipes on the list ---------- */
+.shopping-copy {
+  margin-top: 0.75rem;
+  font: inherit;
+  font-weight: 600;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border: 1.5px solid var(--mauve);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mauve);
+  cursor: pointer;
+}
+.shopping-copy:hover { background: var(--blush); }
+
+.shopping-recipes { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.35rem; }
+.shopping-recipes li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed var(--line);
+}
+.shopping-recipes a { color: var(--ink); font-weight: 600; }
+.shopping-remove {
+  font: inherit;
+  font-size: 0.85rem;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.85rem;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--error);
+  cursor: pointer;
+}
+
+/* ---------- "Checked off … Undo", floating above the bottom nav ---------- */
+.shopping-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--nav-height) + 0.75rem);
+  transform: translateX(-50%);
+  width: min(24rem, calc(100% - 2rem));
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.6rem 0.6rem 1rem;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--page);
+  font-size: 0.9rem;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.2);
+}
+.shopping-toast button {
+  font: inherit;
+  font-weight: 700;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.85rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--blush);
+  cursor: pointer;
+}
+
+.shopping a:focus-visible,
+.shopping button:focus-visible,
+.shopping input:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }

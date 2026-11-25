@@ -1,0 +1,132 @@
+/* "Cook this" panel on a recipe's page. Colors come from theme.css. */
+.cook-start,
+.cook-primary,
+.cook-secondary {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.cook-start,
+.cook-primary {
+  border: 0;
+  background: var(--mauve);
+  color: var(--page);
+}
+.cook-start { width: 100%; margin-top: 1rem; }
+.cook-start:hover,
+.cook-primary:hover:not(:disabled) { background: var(--mauve-dark); }
+.cook-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.cook-secondary { border: 1.5px solid var(--mauve); background: transparent; color: var(--mauve); }
+.cook-start:focus-visible,
+.cook-primary:focus-visible,
+.cook-secondary:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
+
+.cook {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1.5px solid var(--mauve);
+  border-radius: 12px;
+  background: var(--page);
+}
+.cook-title {
+  font-family: var(--font);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: normal;
+  color: var(--ink);
+  margin: 0 0 0.25rem;
+}
+.cook-muted { color: var(--muted); font-size: 0.85rem; margin: 0 0 0.75rem; }
+
+.cook-list,
+.cook-done { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
+
+.cook-row {
+  padding: 0.75rem 0.85rem;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--blush);
+}
+.cook-row.is-skipped { background: transparent; opacity: 0.65; }
+
+.cook-check { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+.cook-check input { accent-color: var(--mauve); width: 1.1rem; height: 1.1rem; margin: 0; }
+
+.cook-amount { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.9rem; }
+.cook-amount input,
+.cook-amount select {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--page);
+  color: var(--ink);
+}
+.cook-amount input { width: 4.5rem; }
+
+.cook-draws { list-style: none; padding: 0; margin: 0.5rem 0 0; color: var(--muted); font-size: 0.8rem; }
+.cook-draws li::before { content: "↳ "; }
+
+.cook-note { font-size: 0.8rem; margin: 0.5rem 0 0; }
+.cook-note.is-short { color: var(--mauve); font-weight: 600; }
+.cook-note.is-missing { color: var(--muted); }
+
+.cook-error { color: var(--error); font-size: 0.9rem; margin: 0.75rem 0 0; }
+
+.cook-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+.cook-actions button { flex: 1; }
+
+.cook-done li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.85rem;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--blush);
+}
+.cook-done span { color: var(--muted); font-size: 0.85rem; }
+.cook-done + .cook-primary { width: 100%; margin-top: 1rem; }
+
+/* "Choose which ones": pick the groceries to cook with */
+.cook-link {
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mauve);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.cook-link:focus-visible { outline: 3px solid var(--mauve); outline-offset: 2px; }
+
+.cook-picks { border: 0; padding: 0; margin: 0.5rem 0 0; display: grid; gap: 0.4rem; }
+.cook-picks legend { font-size: 0.8rem; font-weight: 600; color: var(--muted); padding: 0; margin-bottom: 0.25rem; }
+
+.cook-pick {
+  padding: 0.5rem 0.65rem;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--page);
+}
+.cook-pick.is-picked { border-color: var(--mauve); }
+.cook-pick-name { display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; font-size: 0.85rem; }
+.cook-pick-name input { accent-color: var(--mauve); margin-top: 0.15rem; }
+.cook-pick-name span { display: flex; flex-direction: column; gap: 0.1rem; }
+.cook-pick-name small { color: var(--muted); font-size: 0.78rem; }
+
+.cook-pick-amount { display: flex; align-items: center; gap: 0.4rem; margin: 0.4rem 0 0 1.6rem; font-size: 0.85rem; }
+.cook-pick-amount input {
+  width: 4rem;
+  font: inherit;
+  padding: 0.3rem 0.45rem;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--page);
+  color: var(--ink);
+}
